@@ -9,7 +9,7 @@ DATABASE_URL = os.getenv(
 
 def get_embeddings():
     """Returns the Google Generative AI embedding model."""
-    return GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    return GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2")
 
 
 def _get_vector_store(tenant_id: str):

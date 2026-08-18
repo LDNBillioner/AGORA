@@ -5,6 +5,9 @@ from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langchain_google_genai import ChatGoogleGenerativeAI
 from tools import agent_tools, set_tool_context
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -69,7 +72,7 @@ RIWAYAT TRANSAKSI TENANT (RAG CONTEXT):
 def get_model():
     """Returns Gemini model bound with agent tools."""
     return ChatGoogleGenerativeAI(
-        model="gemini-1.5-pro",
+        model="gemini-3.5-flash",
         temperature=0.1,
     ).bind_tools(agent_tools)
 
