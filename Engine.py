@@ -23,7 +23,7 @@ from database import SessionLocal
 import models
 import os
 import base64
-import requests
+import httpx
 import json
 import uuid
 import re
@@ -265,9 +265,10 @@ def verify_webhook(
     Meta sends this request when you configure the webhook URL in the developer portal.
     Must return hub.challenge as plain integer to confirm ownership.
     """
+    from fastapi.responses import PlainTextResponse
     if hub_mode == "subscribe" and hub_verify_token == META_VERIFY_TOKEN:
         print(f"[WEBHOOK] Verification successful.")
-        return int(hub_challenge)
+        return PlainTextResponse(content=str(hub_challenge))
     raise HTTPException(status_code=403, detail="Webhook verification failed — invalid verify token.")
 
 
@@ -396,7 +397,8 @@ def _call_nvidia_ocr(base64_image: str, content_type: str) -> str:
         "render_mmcontent": False,
     }
 
-    response = requests.post(NVIDIA_OCR_URL, headers=headers, json=payload, timeout=60)
+    with httpx.Client() as http_client:
+        response = http_client.post(NVIDIA_OCR_URL, headers=headers, json=payload, timeout=60.0)
 
     if response.status_code != 200:
         raise RuntimeError(f"NVIDIA OCR HTTP {response.status_code}: {response.text[:300]}")

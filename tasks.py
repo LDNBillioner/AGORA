@@ -9,7 +9,6 @@ Handles multi-modal routing:
 import os
 import io
 import asyncio
-import requests as req_sync
 import httpx
 
 from database import SessionLocal
@@ -59,8 +58,9 @@ def send_whatsapp_message(to_number: str, message: str):
         "text": {"body": message},
     }
     try:
-        response = req_sync.post(url, headers=headers, json=payload, timeout=10)
-        response.raise_for_status()
+        with httpx.Client(timeout=10.0) as client:
+            response = client.post(url, headers=headers, json=payload)
+            response.raise_for_status()
         print(f"[WA] Message sent to {to_number}: {message[:60]}...")
     except Exception as e:
         print(f"[WA] Failed to send message to {to_number}: {e}")
@@ -95,25 +95,29 @@ async def download_media_bytes(media_id: str) -> bytes:
 
 async def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/ogg") -> str:
     """
-    Transcribes audio bytes using Google Gemini 1.5 Flash multimodal capability.
+    Transcribes audio bytes using Google Gemini 3.5 Flash multimodal capability.
     No separate STT API needed — uses the same GOOGLE_API_KEY as the agent.
+    Uses the new google.genai SDK (not the deprecated google.generativeai).
     Returns the transcribed text string.
     """
-    import google.generativeai as genai
+    from google import genai
+    from google.genai import types
 
-    genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
-    audio_part = {"mime_type": mime_type, "data": audio_bytes}
+    audio_part = types.Part.from_bytes(
+        data=audio_bytes,
+        mime_type=mime_type,
+    )
+    prompt = (
+        "Transkrip isi audio berikut dalam Bahasa Indonesia. "
+        "Kembalikan teks transkrip saja, tanpa penjelasan tambahan."
+    )
+
     response = await asyncio.to_thread(
-        model.generate_content,
-        [
-            (
-                "Transkrip isi audio berikut dalam Bahasa Indonesia. "
-                "Kembalikan teks transkrip saja, tanpa penjelasan tambahan."
-            ),
-            audio_part,
-        ],
+        client.models.generate_content,
+        model="gemini-3.5-flash",
+        contents=[prompt, audio_part],
     )
     return response.text.strip()
 
