@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AGORA AI - Visual Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fadeInUp 0.5s ease-out forwards; }
+        .animate-fade-in-1 { animation-delay: 0.1s; opacity: 0; }
+        .animate-fade-in-2 { animation-delay: 0.2s; opacity: 0; }
+        .animate-fade-in-3 { animation-delay: 0.3s; opacity: 0; }
+        .animate-fade-in-4 { animation-delay: 0.4s; opacity: 0; }
+        .pulse-dot {
+            width: 8px; height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.5); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 text-slate-800 antialiased min-h-screen flex flex-col">
+    <!-- Navbar -->
+    <nav class="bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 shadow-xl">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-4">
+                    <span class="text-white font-extrabold text-xl tracking-tight">AGORA<span class="text-indigo-200">AI</span></span>
+                    <span class="px-3 py-1 bg-white/15 text-white rounded-full text-sm font-medium backdrop-blur-sm" id="tenantName">Loading...</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2 text-indigo-100 text-sm">
+                        <div class="pulse-dot"></div>
+                        <span id="liveStatus">Live</span>
+                    </div>
+                    <button onclick="location.reload()" class="ml-3 px-3 py-1.5 bg-white/15 hover:bg-white/25 text-white rounded-lg text-sm font-medium transition-all backdrop-blur-sm">
+                        ↻ Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- User Info Banner -->
+    <div class="bg-white/60 backdrop-blur-sm border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <div class="flex items-center justify-between">
+                <p class="text-sm text-slate-600">📊 Dashboard untuk: <strong id="userInfo" class="text-indigo-700">Loading...</strong></p>
+                <p class="text-xs text-slate-400" id="lastUpdated">Memuat data...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        <!-- Key Metrics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="glass-card rounded-2xl p-6 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl animate-fade-in animate-fade-in-1">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Total Pemasukan</h3>
+                    <span class="text-2xl">💰</span>
+                </div>
+                <p class="mt-3 text-3xl font-extrabold text-emerald-600" id="totalIncome">Rp 0</p>
+                <div class="mt-2 h-1 w-full bg-emerald-100 rounded-full overflow-hidden">
+                    <div class="h-full bg-emerald-500 rounded-full transition-all duration-1000" id="incomeBar" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="glass-card rounded-2xl p-6 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl animate-fade-in animate-fade-in-2">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Total Pengeluaran</h3>
+                    <span class="text-2xl">🛒</span>
+                </div>
+                <p class="mt-3 text-3xl font-extrabold text-rose-600" id="totalExpense">Rp 0</p>
+                <div class="mt-2 h-1 w-full bg-rose-100 rounded-full overflow-hidden">
+                    <div class="h-full bg-rose-500 rounded-full transition-all duration-1000" id="expenseBar" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="glass-card rounded-2xl p-6 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl animate-fade-in animate-fade-in-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Profit Bersih</h3>
+                    <span class="text-2xl" id="profitEmoji">📈</span>
+                </div>
+                <p class="mt-3 text-3xl font-extrabold" id="netProfit">Rp 0</p>
+                <div class="mt-2 h-1 w-full bg-indigo-100 rounded-full overflow-hidden">
+                    <div class="h-full bg-indigo-500 rounded-full transition-all duration-1000" style="width: 50%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div class="bg-white rounded-2xl p-6 shadow-lg border border-slate-100 animate-fade-in animate-fade-in-3">
+                <h3 class="text-lg font-bold mb-4 text-slate-700">📊 Pemasukan vs Pengeluaran</h3>
+                <div class="relative h-72">
+                    <canvas id="barChart"></canvas>
+                </div>
+            </div>
+            <div class="bg-white rounded-2xl p-6 shadow-lg border border-slate-100 animate-fade-in animate-fade-in-4">
+                <h3 class="text-lg font-bold mb-4 text-slate-700">🍩 Top Pengeluaran by Kategori</h3>
+                <div class="relative h-72 flex justify-center">
+                    <canvas id="pieChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transaction Count Badge -->
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-slate-700">📋 Transaksi Terakhir</h3>
+            <span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold" id="txCount">0 transaksi</span>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden animate-fade-in animate-fade-in-4">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Tanggal</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Kategori</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Tipe</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Items</th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Jumlah</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-slate-100" id="tableBody">
+                        <tr>
+                            <td colspan="5" class="px-6 py-8 text-center text-sm text-slate-400">
+                                <div class="animate-pulse">⏳ Memuat data transaksi...</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white/60 border-t border-slate-200 py-4 mt-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400">
+            AGORA AI Accountant — Powered by WhatsApp &amp; NVIDIA Nemotron OCR
+        </div>
+    </footer>
+
+    <script>
+        // ── Parse URL: /dashboard/ui/{tenantId} or /dashboard/ui/{tenantId}/{userId}
+        const pathParts = window.location.pathname.split('/').filter(Boolean);
+        // Expected: ["dashboard", "ui", tenantId] or ["dashboard", "ui", tenantId, userId]
+        const tenantId = pathParts[2] || 'default-tenant';
+        const userId = pathParts[3] || null;
+
+        const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
+
+        let barChartInstance = null;
+        let pieChartInstance = null;
+
+        async function fetchData() {
+            try {
+                // Build query params
+                let summaryUrl = `/dashboard/summary?tenant_id=${tenantId}`;
+                let txUrl = `/dashboard/transactions?tenant_id=${tenantId}&page_size=100`;
+                if (userId) {
+                    summaryUrl += `&user_id=${userId}`;
+                    txUrl += `&user_id=${userId}`;
+                }
+
+                // Fetch summary
+                const sumRes = await fetch(summaryUrl);
+                const data = await sumRes.json();
+
+                // ── Correctly parse the nested response ──
+                const summary = data.summary;   // { total_income, total_expense, net_profit, transaction_count }
+                const tenantName = data.tenant_name || data.tenant_id || tenantId;
+
+                document.getElementById('tenantName').textContent = tenantName;
+                document.getElementById('userInfo').textContent = userId ? `User ${userId}` : `Seluruh Tenant (${tenantName})`;
+                document.getElementById('totalIncome').textContent = formatter.format(summary.total_income);
+                document.getElementById('totalExpense').textContent = formatter.format(summary.total_expense);
+
+                const netProfit = summary.net_profit;
+                document.getElementById('netProfit').textContent = formatter.format(netProfit);
+                document.getElementById('netProfit').className = `mt-3 text-3xl font-extrabold ${netProfit >= 0 ? 'text-indigo-600' : 'text-rose-600'}`;
+                document.getElementById('profitEmoji').textContent = netProfit >= 0 ? '📈' : '📉';
+
+                // Progress bars
+                const maxVal = Math.max(summary.total_income, summary.total_expense, 1);
+                document.getElementById('incomeBar').style.width = `${(summary.total_income / maxVal) * 100}%`;
+                document.getElementById('expenseBar').style.width = `${(summary.total_expense / maxVal) * 100}%`;
+
+                // Fetch transactions
+                const txRes = await fetch(txUrl);
+                const txData = await txRes.json();
+                const transactions = txData.transactions;
+
+                document.getElementById('txCount').textContent = `${txData.pagination.total_count} transaksi`;
+
+                // Render Table (Last 10)
+                const tbody = document.getElementById('tableBody');
+                tbody.innerHTML = '';
+                const last10 = transactions.slice(0, 10);
+
+                if (last10.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-sm text-slate-400">Belum ada transaksi tercatat 📭</td></tr>';
+                } else {
+                    last10.forEach(t => {
+                        const isIncome = t.type === 'income';
+                        const typeBadge = isIncome
+                            ? '<span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-emerald-100 text-emerald-800">Pemasukan</span>'
+                            : '<span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-rose-100 text-rose-800">Pengeluaran</span>';
+                        const amountColor = isIncome ? 'text-emerald-600' : 'text-rose-600';
+                        const prefix = isIncome ? '+' : '-';
+
+                        // Parse items
+                        let itemsStr = '-';
+                        if (t.items && t.items.length > 0) {
+                            itemsStr = t.items.map(i => `${i.item || i.name || '?'} x${i.quantity}`).join(', ');
+                            if (itemsStr.length > 40) itemsStr = itemsStr.substring(0, 37) + '...';
+                        }
+
+                        const dateStr = t.transaction_date
+                            ? new Date(t.transaction_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+                            : (t.created_at ? new Date(t.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-');
+
+                        tbody.innerHTML += `
+                            <tr class="hover:bg-indigo-50/50 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${dateStr}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">${t.category || '-'}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">${typeBadge}</td>
+                                <td class="px-6 py-4 text-sm text-slate-500 max-w-xs truncate">${itemsStr}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-right ${amountColor}">${prefix} ${formatter.format(t.total_amount)}</td>
+                            </tr>
+                        `;
+                    });
+                }
+
+                // Render Charts
+                renderCharts(summary, data.category_breakdown || {});
+
+                // Update timestamp
+                document.getElementById('lastUpdated').textContent = `Terakhir diperbarui: ${new Date().toLocaleTimeString('id-ID')}`;
+
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                document.getElementById('lastUpdated').textContent = `⚠️ Gagal memuat data`;
+            }
+        }
+
+        function renderCharts(summary, categoryBreakdown) {
+            // Destroy old charts before re-rendering
+            if (barChartInstance) barChartInstance.destroy();
+            if (pieChartInstance) pieChartInstance.destroy();
+
+            // Bar Chart
+            const ctxBar = document.getElementById('barChart').getContext('2d');
+            barChartInstance = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: ['Ringkasan Keuangan'],
+                    datasets: [
+                        {
+                            label: 'Pemasukan',
+                            data: [summary.total_income],
+                            backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                            borderColor: '#10b981',
+                            borderWidth: 1,
+                            borderRadius: 8,
+                            barPercentage: 0.6
+                        },
+                        {
+                            label: 'Pengeluaran',
+                            data: [summary.total_expense],
+                            backgroundColor: 'rgba(244, 63, 94, 0.8)',
+                            borderColor: '#f43f5e',
+                            borderWidth: 1,
+                            borderRadius: 8,
+                            barPercentage: 0.6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: v => 'Rp ' + v.toLocaleString('id-ID')
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Pie Chart (Expense Categories from category_breakdown)
+            const pieLabels = [];
+            const pieData = [];
+            const colors = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#8b5cf6', '#64748b', '#0ea5e9', '#f97316'];
+
+            for (const [cat, vals] of Object.entries(categoryBreakdown)) {
+                if (vals.expense > 0) {
+                    pieLabels.push(cat);
+                    pieData.push(vals.expense);
+                }
+            }
+
+            const ctxPie = document.getElementById('pieChart').getContext('2d');
+            pieChartInstance = new Chart(ctxPie, {
+                type: 'doughnut',
+                data: {
+                    labels: pieLabels.length ? pieLabels : ['Belum ada data'],
+                    datasets: [{
+                        data: pieData.length ? pieData : [1],
+                        backgroundColor: pieData.length ? colors.slice(0, pieLabels.length) : ['#e2e8f0'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: {
+                        legend: { position: 'right', labels: { usePointStyle: true, padding: 16 } },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => ` ${ctx.label}: ${formatter.format(ctx.raw)}`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initial fetch
+        fetchData();
+
+        // Auto-refresh every 30 seconds
+        setInterval(fetchData, 30000);
+    </script>
+</body>
+</html>

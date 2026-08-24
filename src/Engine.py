@@ -15,6 +15,7 @@ Endpoints:
 """
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, Query, BackgroundTasks, Request
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -562,30 +563,27 @@ def save_transaction(payload: SaveTransactionRequest, db: Session = Depends(get_
 @app.get("/dashboard/summary", tags=["Dashboard"])
 def get_dashboard_summary(
     tenant_id: str = Query("default-tenant", description="Tenant (business) ID"),
+    user_id: Optional[str] = Query(None, description="Filter by specific user (phone number)"),
     date_from: Optional[str] = Query(None, description="Start date YYYY-MM-DD"),
     date_to: Optional[str] = Query(None, description="End date YYYY-MM-DD"),
-    requester_phone: Optional[str] = Query(None, description="Phone number of the requester (for RBAC)"),
     db: Session = Depends(get_db),
 ):
     """
-    Returns financial summary for a tenant:
+    Returns financial summary for a tenant (optionally filtered by user):
     - Total pemasukan (income)
     - Total pengeluaran (expense)
     - Net profit/loss
     - Breakdown by category
-
-    RBAC: Only 'owner' role can access this endpoint.
     """
-    # RBAC: block employee from seeing financial summary
-    if requester_phone:
-        requester = db.query(models.User).filter(models.User.id == requester_phone).first()
-        if requester and requester.role == "employee":
-            raise HTTPException(
-                status_code=403,
-                detail="Akses ditolak. Karyawan tidak memiliki izin untuk melihat ringkasan keuangan.",
-            )
+    # Resolve tenant name
+    tenant = db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
+    tenant_name = tenant.name if tenant else tenant_id
 
     query = db.query(models.Transaction).filter(models.Transaction.tenant_id == tenant_id)
+
+    # Filter by user_id if provided
+    if user_id:
+        query = query.filter(models.Transaction.user_id == user_id)
 
     if date_from:
         try:
@@ -623,6 +621,8 @@ def get_dashboard_summary(
     return {
         "status": "success",
         "tenant_id": tenant_id,
+        "tenant_name": tenant_name,
+        "user_id": user_id,
         "period": {"from": date_from, "to": date_to},
         "summary": {
             "total_income": round(total_income, 2),
@@ -637,31 +637,24 @@ def get_dashboard_summary(
 @app.get("/dashboard/transactions", tags=["Dashboard"])
 def get_dashboard_transactions(
     tenant_id: str = Query("default-tenant"),
+    user_id: Optional[str] = Query(None, description="Filter by specific user (phone number)"),
     type: Optional[str] = Query(None, description="Filter by type: 'income' or 'expense'"),
     category: Optional[str] = Query(None, description="Filter by category"),
     date_from: Optional[str] = Query(None, description="Start date YYYY-MM-DD"),
     date_to: Optional[str] = Query(None, description="End date YYYY-MM-DD"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    requester_phone: Optional[str] = Query(None, description="Phone number of the requester (for RBAC)"),
     db: Session = Depends(get_db),
 ):
     """
     Returns paginated, filtered transaction list for the web dashboard.
     Supports filtering by type, category, and date range.
-
-    RBAC: Only 'owner' role can access this endpoint.
     """
-    # RBAC: block employee from seeing full transaction list
-    if requester_phone:
-        requester = db.query(models.User).filter(models.User.id == requester_phone).first()
-        if requester and requester.role == "employee":
-            raise HTTPException(
-                status_code=403,
-                detail="Akses ditolak. Karyawan tidak memiliki izin untuk melihat daftar transaksi.",
-            )
-
     query = db.query(models.Transaction).filter(models.Transaction.tenant_id == tenant_id)
+
+    # Filter by user_id if provided
+    if user_id:
+        query = query.filter(models.Transaction.user_id == user_id)
 
     if type:
         query = query.filter(models.Transaction.type == type)
@@ -784,3 +777,41 @@ def list_tenant_users(tenant_id: str, db: Session = Depends(get_db)):
             for u in users
         ],
     }
+
+
+@app.get("/dashboard/ui/{tenant_id}", tags=["Dashboard"], response_class=HTMLResponse)
+def dashboard_ui(tenant_id: str, db: Session = Depends(get_db)):
+    """Menampilkan visual dashboard (HTML) untuk seluruh tenant."""
+    tenant = db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant tidak ditemukan.")
+    
+    html_path = os.path.join(os.path.dirname(__file__), "dashboard.html")
+    if not os.path.exists(html_path):
+        raise HTTPException(status_code=404, detail="Dashboard UI file not found.")
+        
+    with open(html_path, "r", encoding="utf-8") as f:
+        html_content = f.read()
+        
+    return HTMLResponse(content=html_content)
+
+
+@app.get("/dashboard/ui/{tenant_id}/{user_id}", tags=["Dashboard"], response_class=HTMLResponse)
+def dashboard_ui_per_user(tenant_id: str, user_id: str, db: Session = Depends(get_db)):
+    """Menampilkan visual dashboard (HTML) untuk satu user spesifik."""
+    tenant = db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant tidak ditemukan.")
+    
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User tidak ditemukan.")
+    
+    html_path = os.path.join(os.path.dirname(__file__), "dashboard.html")
+    if not os.path.exists(html_path):
+        raise HTTPException(status_code=404, detail="Dashboard UI file not found.")
+        
+    with open(html_path, "r", encoding="utf-8") as f:
+        html_content = f.read()
+        
+    return HTMLResponse(content=html_content)

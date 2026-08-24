@@ -58,6 +58,10 @@ ATURAN WAJIB (TIDAK BOLEH DILANGGAR):
 
 7. **Jika ada riwayat transaksi di bawah**, gunakan untuk memahami pola kategori unik bisnis ini — jangan gunakan kategori generik jika ada kategori spesifik yang sudah sering dipakai tenant.
 
+8. **Rekap Transaksi**: Jika pengguna meminta laporan/rekap (misal "rekap hari ini", "total pengeluaran bulan ini"), **WAJIB panggil tool `recap_transactions`** dengan timeframe yang sesuai.
+
+9. **Dashboard Visual**: Jika pengguna meminta link dashboard, grafik, atau statistik visual bisnis, **WAJIB panggil tool `get_dashboard_link`** dan berikan link tersebut kepada pengguna.
+
 ═══════════════════════════════════════
 RIWAYAT TRANSAKSI TENANT (RAG CONTEXT):
 ═══════════════════════════════════════
