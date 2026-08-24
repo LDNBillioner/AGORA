@@ -12,7 +12,6 @@ class User(Base):
     __tablename__ = "users"
     id = Column(String, primary_key=True, index=True) # WhatsApp number
     tenant_id = Column(String, ForeignKey("tenants.id"))
-    role = Column(String, default="employee") # 'owner' or 'employee'
     name = Column(String, nullable=True)
 
 class Transaction(Base):

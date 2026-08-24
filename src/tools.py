@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 import uuid
 import json
+import os
 from datetime import datetime
 
 
@@ -53,6 +54,17 @@ class RequestClarificationSchema(BaseModel):
             "e.g., 'Berapa nominal gajinya, Kak?'."
         ),
     )
+
+
+class RecapTransactionsSchema(BaseModel):
+    timeframe: str = Field(
+        ...,
+        description="Timeframe for recap. e.g., 'today', 'this_week', 'this_month', 'all_time'."
+    )
+
+
+class GetDashboardLinkSchema(BaseModel):
+    pass
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -109,7 +121,11 @@ def record_transaction(
         # Normalize items
         normalized_items = []
         for raw in items:
-            if isinstance(raw, dict):
+            if hasattr(raw, "model_dump"):
+                normalized_items.append(raw.model_dump())
+            elif hasattr(raw, "dict"):
+                normalized_items.append(raw.dict())
+            elif isinstance(raw, dict):
                 normalized_items.append(raw)
 
         # Calculate total if not provided
@@ -195,7 +211,94 @@ def request_clarification(question: str) -> str:
     return f"CLARIFICATION_NEEDED: {question}"
 
 
+@tool("recap_transactions", args_schema=RecapTransactionsSchema)
+def recap_transactions(timeframe: str) -> str:
+    """
+    Returns a financial recap (total income, expense, and net profit) for the specified timeframe.
+    Timeframe options: 'today', 'this_week', 'this_month', 'all_time'.
+    """
+    from database import SessionLocal
+    import models
+    from datetime import datetime, timedelta
+    from sqlalchemy import func
+    
+    tenant_id = _current_context.get("tenant_id", "default-tenant")
+    user_id = _current_context.get("user_id", "")
+    
+    db = SessionLocal()
+    try:
+        query = db.query(models.Transaction).filter(models.Transaction.tenant_id == tenant_id)
+        if user_id:
+            query = query.filter(models.Transaction.user_id == user_id)
+        
+        now = datetime.now()
+        
+        if timeframe == 'today':
+            query = query.filter(func.date(models.Transaction.created_at) == now.date())
+        elif timeframe == 'this_week':
+            start_of_week = now - timedelta(days=now.weekday())
+            query = query.filter(models.Transaction.created_at >= start_of_week.date())
+        elif timeframe == 'this_month':
+            query = query.filter(
+                func.extract('month', models.Transaction.created_at) == now.month,
+                func.extract('year', models.Transaction.created_at) == now.year
+            )
+        
+        transactions = query.all()
+        
+        total_income = sum(t.total_amount for t in transactions if t.type == "income")
+        total_expense = sum(t.total_amount for t in transactions if t.type == "expense")
+        net_profit = total_income - total_expense
+        count = len(transactions)
+        
+        return (
+            f"Rekap ({timeframe}):\n"
+            f"- Pemasukan: Rp {total_income:,.0f}\n"
+            f"- Pengeluaran: Rp {total_expense:,.0f}\n"
+            f"- Profit Bersih: Rp {net_profit:,.0f}\n"
+            f"- Jumlah Transaksi: {count}"
+        )
+    finally:
+        db.close()
+
+
+@tool("get_dashboard_link", args_schema=GetDashboardLinkSchema)
+def get_dashboard_link() -> str:
+    """
+    Returns the visual web dashboard URL for the current user's personal dashboard.
+    Use this tool when the user asks to view charts, statistics, or the visual dashboard link.
+    """
+    tenant_id = _current_context.get("tenant_id", "default-tenant")
+    user_id = _current_context.get("user_id", "")
+    
+    # Try to dynamically get the Cloudflare Tunnel URL
+    public_url = os.getenv("PUBLIC_URL", "")
+    if not public_url:
+        import urllib.request
+        import re
+        try:
+            resp = urllib.request.urlopen("http://127.0.0.1:20241/metrics", timeout=2)
+            metrics = resp.read().decode("utf-8")
+            match = re.search(r"https://[a-z-]*\.trycloudflare\.com", metrics)
+            if match:
+                public_url = match.group(0)
+        except Exception:
+            pass
+            
+    # Fallback to localhost if cloudflare is not running
+    if not public_url:
+        public_url = os.getenv("AGORA_ENGINE_URL", "http://localhost:8000")
+    
+    # Generate per-user link
+    if user_id:
+        dashboard_url = f"{public_url}/dashboard/ui/{tenant_id}/{user_id}"
+    else:
+        dashboard_url = f"{public_url}/dashboard/ui/{tenant_id}"
+    
+    return f"DASHBOARD_URL: {dashboard_url}"
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Tool Registry
 # ─────────────────────────────────────────────────────────────────────────────
-agent_tools = [record_transaction, request_clarification]
+agent_tools = [record_transaction, request_clarification, recap_transactions, get_dashboard_link]

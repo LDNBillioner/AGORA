@@ -171,11 +171,7 @@ async def extract_receipt_text(image_bytes: bytes, mime_type: str = "image/jpeg"
 def get_or_create_user(db, sender_number: str) -> tuple[models.User, bool]:
     """
     Returns (user, is_new) — creates tenant + user automatically if not found.
-
-    RBAC Logic:
-    - If no tenant exists yet → create default tenant and register user as 'owner'.
-    - If tenant exists but has no owner yet → register as 'owner'.
-    - If tenant already has an owner → register as 'employee'.
+    Everyone is grouped under default-tenant without roles.
     """
     user = db.query(models.User).filter(models.User.id == sender_number).first()
     if user:
@@ -188,18 +184,9 @@ def get_or_create_user(db, sender_number: str) -> tuple[models.User, bool]:
         db.add(tenant)
         db.commit()
 
-    # Assign role: owner only if no owner exists for this tenant yet
-    existing_owner = (
-        db.query(models.User)
-        .filter(models.User.tenant_id == tenant.id, models.User.role == "owner")
-        .first()
-    )
-    assigned_role = "employee" if existing_owner else "owner"
-
     user = models.User(
         id=sender_number,
         tenant_id=tenant.id,
-        role=assigned_role,
         name=None,
     )
     db.add(user)
