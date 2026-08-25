@@ -61,7 +61,7 @@ src/
   setup_db.py      # One-click DB bootstrap (connect → pgvector → migrate → seed)
   dashboard.html   # Self-contained visual dashboard page served by FastAPI
 migrations/        # Alembic configuration + initial migration
-tests/             # Pytest suite (54 tests): normalizers, OCR pipeline, API, tools, agent graph
+tests/             # Pytest suite: normalizers, OCR pipeline, API, tools, agent graph
 docker-compose.yml # Local pgvector/pg16 database
 ```
 

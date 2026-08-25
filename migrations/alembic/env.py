@@ -9,8 +9,11 @@ import os
 import sys
 from dotenv import load_dotenv
 
-# Add src/ (where database.py and models.py live) to path
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__)), "src"))
+# Add src/ (where database.py and models.py live) to path.
+# env.py sits at <project_root>/migrations/alembic/env.py, so the project
+# root is three levels up from this file.
+_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.join(_project_root, "src"))
 
 from database import Base
 import models  # This will import and register all models

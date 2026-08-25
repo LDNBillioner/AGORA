@@ -8,6 +8,7 @@ from tools import (
     request_clarification,
     record_transaction,
     recap_transactions,
+    get_dashboard_link,
 )
 
 
@@ -32,6 +33,26 @@ class TestRequestClarification:
         )
         assert result.startswith("CLARIFICATION_NEEDED:")
         assert "Berapa nominalnya" in result
+
+
+class TestGetDashboardLink:
+    def test_link_uses_public_url_and_context(self, monkeypatch):
+        monkeypatch.setenv("PUBLIC_URL", "https://agora.example.com")
+        set_tool_context(tenant_id="tenant-x", user_id="628123")
+        result = get_dashboard_link.invoke({})
+        assert result.startswith("DASHBOARD_URL:")
+        assert (
+            "https://agora.example.com/dashboard/ui/tenant-x/628123"
+            in result
+        )
+
+    def test_tenant_level_link_without_user(self, monkeypatch):
+        monkeypatch.setenv("PUBLIC_URL", "https://agora.example.com")
+        set_tool_context(tenant_id="tenant-x", user_id=None)
+        result = get_dashboard_link.invoke({})
+        # No trailing slash / user segment when user_id is absent
+        assert "dashboard/ui/tenant-x" in result
+        assert "/628123" not in result
 
 
 class TestRecordTransaction:
