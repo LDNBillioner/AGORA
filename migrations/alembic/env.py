@@ -9,8 +9,8 @@ import os
 import sys
 from dotenv import load_dotenv
 
-# Add project root to path
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+# Add src/ (where database.py and models.py live) to path
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__)), "src"))
 
 from database import Base
 import models  # This will import and register all models

@@ -101,12 +101,17 @@ def run_migrations():
     """Step 3: Run Alembic migrations to create tables."""
     print_step(3, "Menjalankan migrasi database (membuat tabel)")
 
+    # alembic.ini lives in <project_root>/migrations/, not in src/
+    src_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(src_dir)
+    migrations_dir = os.path.join(project_root, "migrations")
+
     try:
         result = subprocess.run(
             ["alembic", "upgrade", "head"],
             capture_output=True,
             text=True,
-            cwd=os.path.dirname(os.path.abspath(__file__)),
+            cwd=migrations_dir if os.path.isdir(migrations_dir) else src_dir,
         )
         if result.returncode == 0:
             print("✅ Migrasi berhasil! Tabel sudah terbuat:")

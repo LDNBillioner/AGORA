@@ -1,5 +1,7 @@
 from langchain_core.tools import tool
-from pydantic import BaseModel, Field
+# NOTE: langchain-core's @tool expects *pydantic v1* args_schema models,
+# so we must use the pydantic.v1 compatibility namespace here.
+from pydantic.v1 import BaseModel, Field
 from typing import Optional, List
 import uuid
 import json
@@ -123,6 +125,7 @@ def record_transaction(
     from database import SessionLocal
     import models
 
+    db = None
     try:
         db = SessionLocal()
 
@@ -225,7 +228,8 @@ def record_transaction(
     except Exception as exc:
         return f"ERROR: Gagal menyimpan transaksi — {str(exc)}"
     finally:
-        db.close()
+        if db is not None:
+            db.close()
 
 
 @tool("request_clarification", args_schema=RequestClarificationSchema)
