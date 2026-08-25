@@ -69,7 +69,7 @@ ATURAN WAJIB (TIDAK BOLEH DILANGGAR):
    - `vendor_name`: nama vendor/supplier
    - `tax_ppn`: jumlah PPN
    - `discount_total`: total diskon
-   - `accounting_entries`: jurnal double-entry [{account_code, account_name, debit, credit}]
+   - `accounting_entries`: jurnal double-entry [{{account_code, account_name, debit, credit}}]
    - `is_math_verified`: apakah validasi matematis lolos
    - `math_discrepancy`: selisih pembulatan jika ada
 
@@ -93,7 +93,7 @@ RIWAYAT TRANSAKSI TENANT (RAG CONTEXT):
 def get_model():
     """Returns Gemini model bound with agent tools."""
     return ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
+        model="gemini-3.6-flash",
         temperature=0.1,
     ).bind_tools(agent_tools)
 
@@ -240,7 +240,14 @@ def process_message(
     if not reply:
         # Fallback: use the last AI message content
         last_msg = result["messages"][-1]
-        reply = getattr(last_msg, "content", "") or "Maaf Kak, ada masalah di sistem kami."
+        content = getattr(last_msg, "content", "")
+        if isinstance(content, list):
+            text_parts = [str(part.get("text", "")) for part in content if isinstance(part, dict) and "text" in part]
+            reply = "".join(text_parts)
+        else:
+            reply = str(content)
+            
+        reply = reply or "Maaf Kak, ada masalah di sistem kami."
 
     return {
         "requires_clarification": result.get("requires_clarification", False),

@@ -518,7 +518,7 @@ Jangan tambahkan teks apapun sebelum atau sesudah JSON."""
     )
 
     # Try multiple models in order — if one is overloaded, try the next
-    models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+    models_to_try = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
     last_error = None
 
     for model_name in models_to_try:

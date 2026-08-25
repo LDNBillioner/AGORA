@@ -120,7 +120,7 @@ async def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/ogg") -> 
 
     response = await asyncio.to_thread(
         client.models.generate_content,
-        model="gemini-2.5-flash",
+        model="gemini-3.6-flash",
         contents=[prompt, audio_part],
     )
     return response.text.strip()
