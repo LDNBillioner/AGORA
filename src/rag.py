@@ -49,7 +49,7 @@ def retrieve_past_transactions(tenant_id: str, query: str, k: int = 50) -> str:
 
     PRD requirement: inject 50 past transactions as context into the agent prompt.
     """
-    # ── Primary: PGVector semantic search ───────────────────────────────────
+    # Primary: PGVector semantic search
     try:
         vs = _get_vector_store(tenant_id)
         docs = vs.similarity_search(query, k=k)
@@ -59,7 +59,7 @@ def retrieve_past_transactions(tenant_id: str, query: str, k: int = 50) -> str:
     except Exception as pgvec_err:
         print(f"[RAG] PGVector search failed, trying DB fallback: {pgvec_err}")
 
-    # ── Fallback: plain SQLAlchemy query (most recent N transactions) ────────
+    # Fallback: plain SQLAlchemy query (most recent N transactions)
     try:
         from database import SessionLocal
         import models

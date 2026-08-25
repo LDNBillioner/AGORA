@@ -7,9 +7,7 @@ import os
 from datetime import datetime
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Pydantic Schemas
-# ─────────────────────────────────────────────────────────────────────────────
 
 class TransactionItemSchema(BaseModel):
     item: str = Field(..., description="Name of the item or service.")
@@ -44,7 +42,7 @@ class RecordTransactionSchema(BaseModel):
     )
     notes: Optional[str] = Field(None, description="Any additional notes.")
     currency: Optional[str] = Field("IDR", description="Currency code, default IDR.")
-    # ── Accounting Fields ────────────────────────────────────────────────────
+    # Accounting Fields
     document_type: Optional[str] = Field(None, description="Document type: FAKTUR_KREDIT, NOTA_KONTAN, STRUK, DELIVERY_ORDER, KUITANSI")
     invoice_number: Optional[str] = Field(None, description="Invoice/receipt number if available.")
     vendor_name: Optional[str] = Field(None, description="Vendor/supplier name.")
@@ -76,9 +74,7 @@ class GetDashboardLinkSchema(BaseModel):
     pass
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Tool Implementations
-# ─────────────────────────────────────────────────────────────────────────────
 
 # NOTE: tenant_id and user_id are injected from the agent state via a
 #       module-level context variable before the agent graph is invoked.
@@ -191,7 +187,7 @@ def record_transaction(
         db.commit()
         db.refresh(db_transaction)
 
-        # ── Add to RAG vector store for future context ──────────────────────
+        # Add to RAG vector store for future context
         try:
             from rag import add_transaction_to_rag
             rag_text = (
@@ -325,7 +321,5 @@ def get_dashboard_link() -> str:
     return f"DASHBOARD_URL: {dashboard_url}"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Tool Registry
-# ─────────────────────────────────────────────────────────────────────────────
 agent_tools = [record_transaction, request_clarification, recap_transactions, get_dashboard_link]

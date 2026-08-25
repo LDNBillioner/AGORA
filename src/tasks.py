@@ -16,9 +16,7 @@ import models
 from rag import retrieve_past_transactions
 from agent import process_message
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Config
-# ─────────────────────────────────────────────────────────────────────────────
 
 META_ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN", "")
 META_PHONE_NUMBER_ID = os.getenv("META_PHONE_NUMBER_ID", "")
@@ -38,9 +36,7 @@ ONBOARDING_MESSAGE = (
 )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # WhatsApp API Helpers
-# ─────────────────────────────────────────────────────────────────────────────
 
 def send_whatsapp_message(to_number: str, message: str):
     """Sends a text message via Meta WhatsApp Cloud API (sync)."""
@@ -93,9 +89,7 @@ async def download_media_bytes(media_id: str) -> bytes:
         return media_resp.content
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Audio: Gemini Multimodal STT
-# ─────────────────────────────────────────────────────────────────────────────
 
 async def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/ogg") -> str:
     """
@@ -126,9 +120,7 @@ async def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/ogg") -> 
     return response.text.strip()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Image: OCR via Gemini Vision
-# ─────────────────────────────────────────────────────────────────────────────
 
 async def extract_receipt_text(image_bytes: bytes, mime_type: str = "image/jpeg") -> str:
     """
@@ -208,9 +200,7 @@ async def extract_receipt_text(image_bytes: bytes, mime_type: str = "image/jpeg"
     return "\n".join(lines)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # User / Tenant Helpers
-# ─────────────────────────────────────────────────────────────────────────────
 
 def get_or_create_user(db, sender_number: str) -> tuple[models.User, bool]:
     """
@@ -238,9 +228,7 @@ def get_or_create_user(db, sender_number: str) -> tuple[models.User, bool]:
     return user, True
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Main Background Task
-# ─────────────────────────────────────────────────────────────────────────────
 
 async def process_webhook_message(message_data: dict):
     """
@@ -261,7 +249,7 @@ async def process_webhook_message(message_data: dict):
 
     db = SessionLocal()
     try:
-        # ── 1. User / Tenant resolution ──────────────────────────────────────
+        # 1. User / Tenant resolution
         user, is_new = get_or_create_user(db, sender_number)
         tenant_id = user.tenant_id
 
@@ -269,13 +257,13 @@ async def process_webhook_message(message_data: dict):
             send_whatsapp_message(sender_number, ONBOARDING_MESSAGE)
             return  # New users get onboarding first, process next message
 
-        # ── 2. Retrieve RAG context (50 past transactions) ───────────────────
+        # 2. Retrieve RAG context (50 past transactions)
         # Use text body if available, otherwise generic query for audio/image
         msg_body = message_data.get("text", {}).get("body", "")
         text_query = msg_body if msg_body else "transaksi terbaru"
         rag_context = retrieve_past_transactions(tenant_id, text_query, k=50)
 
-        # ── 3. Multi-modal routing ───────────────────────────────────────────
+        # 3. Multi-modal routing
         agent_input_text = None
 
         if msg_type == "text":
@@ -353,7 +341,7 @@ async def process_webhook_message(message_data: dict):
             )
             return
 
-        # ── 4. Invoke Agent ──────────────────────────────────────────────────
+        # 4. Invoke Agent
         result = process_message(
             tenant_id=tenant_id,
             user_id=sender_number,
@@ -365,7 +353,7 @@ async def process_webhook_message(message_data: dict):
         if not reply:
             reply = "Maaf Kak, ada masalah di sistem kami. Coba lagi ya 🙏"
 
-        # ── 5. Send reply back to user ───────────────────────────────────────
+        # 5. Send reply back to user
         send_whatsapp_message(sender_number, reply)
 
     except Exception as e:

@@ -54,9 +54,7 @@ app.add_middleware(
 META_VERIFY_TOKEN = os.getenv("META_VERIFY_TOKEN", "agora_verify_token")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Database Dependency
-# ─────────────────────────────────────────────────────────────────────────────
 
 def get_db():
     db = SessionLocal()
@@ -66,9 +64,7 @@ def get_db():
         db.close()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Numeric Normalizers
-# ─────────────────────────────────────────────────────────────────────────────
 
 def normalize_numeric_token(token: str) -> float | None:
     if token is None:
@@ -115,9 +111,7 @@ def normalize_integer_token(token) -> int | None:
     return int(value)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # OCR Helpers (unchanged from original, kept for /extract-receipt)
-# ─────────────────────────────────────────────────────────────────────────────
 
 def normalize_ocr_payload(extracted_text: str) -> dict:
     """Parse OCR output into structured dict. Handles both new accounting schema and legacy format."""
@@ -274,9 +268,7 @@ def validate_ocr_output(payload: dict) -> dict:
     return result
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Pydantic Models
-# ─────────────────────────────────────────────────────────────────────────────
 
 class TransactionItem(BaseModel):
     item: str = Field(..., min_length=1)
@@ -308,18 +300,14 @@ class RegisterUserRequest(BaseModel):
     tenant_id: str = Field(..., description="The tenant (business) ID this user belongs to")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Routes — Health
-# ─────────────────────────────────────────────────────────────────────────────
 
 @app.get("/", tags=["Health"])
 def read_root():
     return {"message": "AGORA AI Engine is running.", "version": "1.0.0"}
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Routes — WhatsApp Webhook
-# ─────────────────────────────────────────────────────────────────────────────
 
 @app.get("/webhook", tags=["WhatsApp"])
 def verify_webhook(
@@ -394,9 +382,7 @@ def _run_async_task(message_data: dict):
     thread.start()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Routes — OCR / Receipt Extraction
-# ─────────────────────────────────────────────────────────────────────────────
 
 @app.post("/extract-receipt", tags=["AI"])
 def extract_receipt(file: UploadFile = File(...)):
@@ -550,9 +536,7 @@ Jangan tambahkan teks apapun sebelum atau sesudah JSON."""
 
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Routes — Transactions (Manual / Raw)
-# ─────────────────────────────────────────────────────────────────────────────
 
 @app.get("/transactions", tags=["Transactions"])
 def get_all_transactions(db: Session = Depends(get_db)):
@@ -636,9 +620,7 @@ def save_transaction(payload: SaveTransactionRequest, db: Session = Depends(get_
         raise HTTPException(status_code=500, detail=f"Gagal menyimpan transaksi: {str(exc)}")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Routes — Dashboard
-# ─────────────────────────────────────────────────────────────────────────────
 
 @app.get("/dashboard/summary", tags=["Dashboard"])
 def get_dashboard_summary(
@@ -791,9 +773,7 @@ def get_dashboard_transactions(
     }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Routes — User Management
-# ─────────────────────────────────────────────────────────────────────────────
 
 @app.post("/users", tags=["User Management"])
 def register_user(payload: RegisterUserRequest, db: Session = Depends(get_db)):

@@ -32,7 +32,7 @@ class Transaction(Base):
     category = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # ── Accounting Fields ────────────────────────────────────────────────────
+    # Accounting Fields
     document_type = Column(String, nullable=True)        # FAKTUR_KREDIT, NOTA_KONTAN, DELIVERY_ORDER, STRUK
     invoice_number = Column(String, nullable=True)       # Nomor faktur/nota
     vendor_name = Column(String, nullable=True)          # Nama vendor/supplier

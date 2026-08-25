@@ -10,9 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Agent State
-# ─────────────────────────────────────────────────────────────────────────────
 
 class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], "The messages in the conversation"]
@@ -22,9 +20,7 @@ class AgentState(TypedDict):
     final_response: str
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # System Prompt
-# ─────────────────────────────────────────────────────────────────────────────
 
 SYSTEM_PROMPT = """Kamu adalah AGORA, AI Accountant profesional untuk bisnis UMKM di Indonesia.
 Tugasmu adalah membantu pemilik usaha mencatat transaksi keuangan melalui WhatsApp dengan standar akuntansi double-entry.
@@ -86,9 +82,7 @@ RIWAYAT TRANSAKSI TENANT (RAG CONTEXT):
 """
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Graph Nodes
-# ─────────────────────────────────────────────────────────────────────────────
 
 def get_model():
     """Returns Gemini model bound with agent tools."""
@@ -171,9 +165,7 @@ def process_tool_results(state: AgentState):
     }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Build LangGraph
-# ─────────────────────────────────────────────────────────────────────────────
 
 workflow = StateGraph(AgentState)
 
@@ -193,9 +185,7 @@ workflow.add_edge("process_result", END)
 agent_executor = workflow.compile()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Public API
-# ─────────────────────────────────────────────────────────────────────────────
 
 def process_message(
     tenant_id: str,
