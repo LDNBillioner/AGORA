@@ -132,15 +132,17 @@
                     <thead class="bg-slate-50">
                         <tr>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Tanggal</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Dok</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Kategori</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Tipe</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Items</th>
                             <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Jumlah</th>
+                            <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Jurnal</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-slate-100" id="tableBody">
                         <tr>
-                            <td colspan="5" class="px-6 py-8 text-center text-sm text-slate-400">
+                            <td colspan="7" class="px-6 py-8 text-center text-sm text-slate-400">
                                 <div class="animate-pulse">⏳ Memuat data transaksi...</div>
                             </td>
                         </tr>
@@ -153,7 +155,7 @@
     <!-- Footer -->
     <footer class="bg-white/60 border-t border-slate-200 py-4 mt-8">
         <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400">
-            AGORA AI Accountant — Powered by WhatsApp &amp; NVIDIA Nemotron OCR
+            AGORA AI Accountant &mdash; Powered by WhatsApp &amp; Google Gemini AI
         </div>
     </footer>
 
@@ -215,15 +217,20 @@
                 const last10 = transactions.slice(0, 10);
 
                 if (last10.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-sm text-slate-400">Belum ada transaksi tercatat 📭</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-sm text-slate-400">Belum ada transaksi tercatat 📭</td></tr>';
                 } else {
-                    last10.forEach(t => {
+                    last10.forEach((t, idx) => {
                         const isIncome = t.type === 'income';
                         const typeBadge = isIncome
                             ? '<span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-emerald-100 text-emerald-800">Pemasukan</span>'
                             : '<span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full bg-rose-100 text-rose-800">Pengeluaran</span>';
                         const amountColor = isIncome ? 'text-emerald-600' : 'text-rose-600';
                         const prefix = isIncome ? '+' : '-';
+
+                        // Document type badge
+                        const docType = t.document_type || '';
+                        const docColors = { 'FAKTUR_KREDIT': 'bg-amber-100 text-amber-800', 'NOTA_KONTAN': 'bg-blue-100 text-blue-800', 'STRUK': 'bg-slate-100 text-slate-700', 'KUITANSI': 'bg-purple-100 text-purple-800' };
+                        const docBadge = docType ? `<span class="px-2 py-0.5 text-xs font-medium rounded-full ${docColors[docType] || 'bg-slate-100 text-slate-600'}">${docType.replace('_', ' ')}</span>` : '<span class="text-xs text-slate-300">—</span>';
 
                         // Parse items
                         let itemsStr = '-';
@@ -236,14 +243,37 @@
                             ? new Date(t.transaction_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
                             : (t.created_at ? new Date(t.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-');
 
+                        // Journal button
+                        const hasJournal = t.accounting_entries && t.accounting_entries.length > 0;
+                        const journalBtn = hasJournal
+                            ? `<button onclick="toggleJournal(${idx})" class="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors font-medium">📒 Lihat</button>`
+                            : '<span class="text-xs text-slate-300">—</span>';
+
+                        // Build journal row (hidden by default)
+                        let journalRow = '';
+                        if (hasJournal) {
+                            let journalHtml = '<table class="w-full text-xs"><thead><tr class="bg-indigo-50"><th class="px-3 py-2 text-left">Kode Akun</th><th class="px-3 py-2 text-left">Nama Akun</th><th class="px-3 py-2 text-right">Debit</th><th class="px-3 py-2 text-right">Kredit</th></tr></thead><tbody>';
+                            t.accounting_entries.forEach(e => {
+                                journalHtml += `<tr class="border-t border-indigo-100"><td class="px-3 py-1.5 font-mono">${e.account_code || ''}</td><td class="px-3 py-1.5">${e.account_name || ''}</td><td class="px-3 py-1.5 text-right ${e.debit ? 'text-emerald-700 font-semibold' : 'text-slate-300'}">${e.debit ? formatter.format(e.debit) : '-'}</td><td class="px-3 py-1.5 text-right ${e.credit ? 'text-rose-700 font-semibold' : 'text-slate-300'}">${e.credit ? formatter.format(e.credit) : '-'}</td></tr>`;
+                            });
+                            journalHtml += '</tbody></table>';
+                            const mathBadge = t.is_math_verified === false
+                                ? `<span class="ml-2 px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded-full">⚠️ Selisih: ${formatter.format(t.math_discrepancy || 0)}</span>`
+                                : '<span class="ml-2 px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full">✅ Terverifikasi</span>';
+                            journalRow = `<tr id="journal-${idx}" class="hidden"><td colspan="7" class="px-6 py-4 bg-indigo-50/30"><div class="flex items-center mb-2"><span class="text-sm font-semibold text-indigo-700">📒 Jurnal Akuntansi (Double-Entry)</span>${mathBadge}</div>${journalHtml}</td></tr>`;
+                        }
+
                         tbody.innerHTML += `
                             <tr class="hover:bg-indigo-50/50 transition-colors">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">${dateStr}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">${docBadge}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-800">${t.category || '-'}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">${typeBadge}</td>
                                 <td class="px-6 py-4 text-sm text-slate-500 max-w-xs truncate">${itemsStr}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-right ${amountColor}">${prefix} ${formatter.format(t.total_amount)}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">${journalBtn}</td>
                             </tr>
+                            ${journalRow}
                         `;
                     });
                 }
@@ -347,6 +377,14 @@
                     }
                 }
             });
+        }
+
+        // Toggle journal row visibility
+        function toggleJournal(idx) {
+            const row = document.getElementById(`journal-${idx}`);
+            if (row) {
+                row.classList.toggle('hidden');
+            }
         }
 
         // Initial fetch

@@ -44,6 +44,15 @@ class RecordTransactionSchema(BaseModel):
     )
     notes: Optional[str] = Field(None, description="Any additional notes.")
     currency: Optional[str] = Field("IDR", description="Currency code, default IDR.")
+    # ── Accounting Fields ────────────────────────────────────────────────────
+    document_type: Optional[str] = Field(None, description="Document type: FAKTUR_KREDIT, NOTA_KONTAN, STRUK, DELIVERY_ORDER, KUITANSI")
+    invoice_number: Optional[str] = Field(None, description="Invoice/receipt number if available.")
+    vendor_name: Optional[str] = Field(None, description="Vendor/supplier name.")
+    tax_ppn: Optional[float] = Field(0, description="PPN tax amount.")
+    discount_total: Optional[float] = Field(0, description="Total discount amount.")
+    accounting_entries: Optional[List[dict]] = Field(None, description="Double-entry journal: [{account_code, account_name, debit, credit}]")
+    is_math_verified: Optional[bool] = Field(True, description="Whether OCR math validation passed.")
+    math_discrepancy: Optional[float] = Field(0, description="Math discrepancy amount if any.")
 
 
 class RequestClarificationSchema(BaseModel):
@@ -94,11 +103,20 @@ def record_transaction(
     payment_method: Optional[str] = None,
     notes: Optional[str] = None,
     currency: Optional[str] = "IDR",
+    # Accounting fields
+    document_type: Optional[str] = None,
+    invoice_number: Optional[str] = None,
+    vendor_name: Optional[str] = None,
+    tax_ppn: Optional[float] = 0,
+    discount_total: Optional[float] = 0,
+    accounting_entries: Optional[List[dict]] = None,
+    is_math_verified: Optional[bool] = True,
+    math_discrepancy: Optional[float] = 0,
 ) -> str:
     """
-    Records a financial transaction into the PostgreSQL database.
-    Call this tool ONLY when you have extracted sufficient information
-    (items with their prices, transaction type, and category) from the user's message.
+    Records a financial transaction with full accounting data into the PostgreSQL database.
+    Includes document type classification, double-entry journal entries, and math verification.
+    Call this tool ONLY when you have extracted sufficient information from the user's message.
     DO NOT hallucinate missing values — use request_clarification instead.
     """
     # Import here to avoid circular imports at module load
@@ -155,10 +173,19 @@ def record_transaction(
             type=type,
             category=category,
             notes=notes,
-            merchant_name=merchant_name,
+            merchant_name=merchant_name or vendor_name,
             transaction_date=txn_date,
             payment_method=payment_method,
             currency=currency or "IDR",
+            # Accounting fields
+            document_type=document_type,
+            invoice_number=invoice_number,
+            vendor_name=vendor_name,
+            tax_ppn=float(tax_ppn or 0),
+            discount_total=float(discount_total or 0),
+            accounting_entries=accounting_entries,
+            is_math_verified=is_math_verified if is_math_verified is not None else True,
+            math_discrepancy=float(math_discrepancy or 0),
         )
         db.add(db_transaction)
         db.commit()

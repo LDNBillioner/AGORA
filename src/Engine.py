@@ -50,9 +50,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
-NVIDIA_CHAT_URL = "https://integrate.api.nvidia.com/v1/chat/completions"  # for LLM models
-NVIDIA_OCR_URL = "https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2"  # dedicated OCR endpoint
+
 META_VERIFY_TOKEN = os.getenv("META_VERIFY_TOKEN", "agora_verify_token")
 
 
@@ -122,6 +120,7 @@ def normalize_integer_token(token) -> int | None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def normalize_ocr_payload(extracted_text: str) -> dict:
+    """Parse OCR output into structured dict. Handles both new accounting schema and legacy format."""
     cleaned_text = re.sub(r'```(?:json)?\n?|```', '', extracted_text).strip()
     try:
         parsed = json.loads(cleaned_text)
@@ -129,11 +128,62 @@ def normalize_ocr_payload(extracted_text: str) -> dict:
             return parsed
     except Exception:
         pass
-    return {"raw_text": extracted_text, "items": [], "total_amount": None, "currency": "IDR"}
+    return {"raw_text": extracted_text, "line_items": [], "items": [], "financial_summary": {"grand_total": 0}, "currency": "IDR"}
+
+
+def _convert_new_schema_to_legacy(payload: dict) -> dict:
+    """
+    Convert the new accounting schema to a backward-compatible format
+    that the rest of the pipeline (agent, tools) can consume.
+    Preserves all accounting data in extra fields.
+    """
+    doc_meta = payload.get("document_metadata", {})
+    line_items = payload.get("line_items", [])
+    fin_summary = payload.get("financial_summary", {})
+    acct_entries = payload.get("accounting_entries", [])
+
+    # Convert line_items to legacy items format
+    legacy_items = []
+    for li in line_items:
+        legacy_items.append({
+            "item": li.get("description", ""),
+            "quantity": li.get("quantity", 1),
+            "price": li.get("line_total_net", 0) or li.get("unit_price_effective", 0),
+            # Preserve extra accounting fields
+            "item_code": li.get("item_code"),
+            "unit": li.get("unit", "pcs"),
+            "unit_price_effective": li.get("unit_price_effective", 0),
+            "discount_amount": li.get("discount_amount", 0),
+            "line_total_net": li.get("line_total_net", 0),
+            "account_mapping": li.get("account_mapping", ""),
+        })
+
+    vendor = doc_meta.get("vendor", {})
+
+    return {
+        "merchant_name": vendor.get("name", "") if isinstance(vendor, dict) else str(vendor),
+        "transaction_date": doc_meta.get("transaction_date"),
+        "payment_method": None,
+        "items": legacy_items,
+        "total_amount": fin_summary.get("grand_total", 0),
+        "currency": "IDR",
+        # Accounting-specific fields
+        "document_type": doc_meta.get("document_type", "STRUK"),
+        "invoice_number": doc_meta.get("invoice_number"),
+        "vendor_name": vendor.get("name", "") if isinstance(vendor, dict) else str(vendor),
+        "due_date": doc_meta.get("due_date"),
+        "customer": doc_meta.get("customer", {}),
+        "tax_ppn": fin_summary.get("tax_ppn", 0),
+        "discount_total": fin_summary.get("total_discount", 0),
+        "subtotal": fin_summary.get("subtotal", 0),
+        "is_math_verified": fin_summary.get("is_math_verified", True),
+        "math_discrepancy": fin_summary.get("math_discrepancy_amount", 0),
+        "accounting_entries": acct_entries,
+    }
 
 
 def fallback_parse_items(payload: dict) -> list[dict]:
-    items = payload.get("items")
+    items = payload.get("items") or payload.get("line_items")
     if isinstance(items, list) and items:
         return items
 
@@ -179,33 +229,49 @@ def fallback_parse_items(payload: dict) -> list[dict]:
 
 
 def validate_ocr_output(payload: dict) -> dict:
+    """Validate and normalize OCR output. Handles both new accounting schema and legacy."""
     if not isinstance(payload, dict):
         raise HTTPException(status_code=400, detail="OCR output harus berupa objek JSON.")
+
+    # Detect new accounting schema and convert
+    if "document_metadata" in payload or "line_items" in payload:
+        payload = _convert_new_schema_to_legacy(payload)
+
     items = payload.get("items")
     if not isinstance(items, list) or len(items) == 0:
         items = fallback_parse_items(payload)
     if not isinstance(items, list) or len(items) == 0:
         raise HTTPException(status_code=400, detail="OCR output harus berisi minimal 1 item transaksi.")
+
     normalized_items = []
     for index, item in enumerate(items, start=1):
         if not isinstance(item, dict):
             raise HTTPException(status_code=400, detail=f"Item ke-{index} tidak valid.")
-        item_name = str(item.get("item") or item.get("name") or "").strip() or f"item_{index}"
+        item_name = str(item.get("item") or item.get("description") or item.get("name") or "").strip() or f"item_{index}"
         qty_val = item.get("quantity") if item.get("quantity") is not None else item.get("qty")
-        price_val = item.get("price") if item.get("price") is not None else item.get("amount")
+        price_val = item.get("price") if item.get("price") is not None else (item.get("line_total_net") or item.get("amount"))
         quantity_int = normalize_integer_token(qty_val) if qty_val is not None else 1
         price_float = normalize_numeric_token(price_val) if price_val is not None else 0.0
         if quantity_int is None or quantity_int < 1:
             quantity_int = 1
         if price_float is None or price_float < 0:
             price_float = 0.0
-        normalized_items.append({"item": item_name, "quantity": quantity_int, "price": price_float})
+
+        normalized_item = {"item": item_name, "quantity": quantity_int, "price": price_float}
+        # Preserve accounting fields if present
+        for extra_key in ("item_code", "unit", "unit_price_effective", "discount_amount", "line_total_net", "account_mapping"):
+            if extra_key in item:
+                normalized_item[extra_key] = item[extra_key]
+        normalized_items.append(normalized_item)
+
     total_amount = payload.get("total_amount")
     if total_amount is None:
         total_amount = sum(i["price"] * i["quantity"] for i in normalized_items)
     else:
         total_amount = normalize_numeric_token(total_amount) or 0.0
-    return {**payload, "items": normalized_items, "total_amount": total_amount, "currency": payload.get("currency") or "IDR"}
+
+    result = {**payload, "items": normalized_items, "total_amount": total_amount, "currency": payload.get("currency") or "IDR"}
+    return result
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -336,137 +402,151 @@ def _run_async_task(message_data: dict):
 def extract_receipt(file: UploadFile = File(...)):
     """
     Extracts structured financial data from a receipt/nota image.
-
-    Pipeline:
-    1. Primary  — NVIDIA Nemotron-OCR-v2 (ai.api.nvidia.com/v1/cv/...)
-       Uses dedicated CV endpoint, NOT the chat/completions endpoint.
-    2. Fallback — Gemini 1.5 Flash Vision (if NVIDIA fails or key missing).
+    Uses Gemini 1.5 Flash Vision for efficient processing.
     """
     file_bytes = file.file.read()
     base64_image = base64.b64encode(file_bytes).decode("utf-8")
 
-    # ── 1. Try NVIDIA Nemotron-OCR-v2 ────────────────────────────────────────
-    if NVIDIA_API_KEY:
-        try:
-            extracted_text = _call_nvidia_ocr(base64_image, file.content_type or "image/jpeg")
-            normalized_data = normalize_ocr_payload(extracted_text)
-            validated_ocr = validate_ocr_output(normalized_data)
-            print(f"[OCR] NVIDIA success: {file.filename}")
-            return {"filename": file.filename, "status": "success", "provider": "nvidia", "data": validated_ocr}
-        except HTTPException:
-            raise
-        except Exception as nvidia_err:
-            print(f"[OCR] NVIDIA failed ({nvidia_err}), trying Gemini fallback...")
-
-    # ── 2. Fallback: Gemini Vision ────────────────────────────────────────────
     google_api_key = os.getenv("GOOGLE_API_KEY")
     if not google_api_key:
         raise HTTPException(
             status_code=500,
-            detail="Tidak ada AI provider yang tersedia (NVIDIA_API_KEY & GOOGLE_API_KEY kosong).",
+            detail="Tidak ada AI provider yang tersedia (GOOGLE_API_KEY kosong).",
         )
     try:
         extracted_text = _call_gemini_ocr(base64_image, file.content_type or "image/jpeg")
         normalized_data = normalize_ocr_payload(extracted_text)
         validated_ocr = validate_ocr_output(normalized_data)
-        print(f"[OCR] Gemini fallback success: {file.filename}")
-        return {"filename": file.filename, "status": "success", "provider": "gemini-fallback", "data": validated_ocr}
+        print(f"[OCR] Gemini success: {file.filename}")
+        return {"filename": file.filename, "status": "success", "provider": "gemini", "data": validated_ocr}
     except HTTPException:
         raise
     except Exception as gemini_err:
-        print(f"[OCR] Gemini fallback also failed: {gemini_err}")
-        raise HTTPException(status_code=500, detail=f"Semua OCR provider gagal: {gemini_err}")
-
-
-def _call_nvidia_ocr(base64_image: str, content_type: str) -> str:
-    """
-    Calls NVIDIA Nemotron-OCR-v2 via its dedicated CV endpoint.
-    Endpoint: POST https://ai.api.nvidia.com/v1/cv/nvidia/nemotron-ocr-v2
-    Payload:  { "image": "<base64>", "render_mmcontent": false }
-    """
-    headers = {
-        "Authorization": f"Bearer {NVIDIA_API_KEY}",
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-    }
-    # Nemotron-OCR-v2 dedicated payload format (NOT chat/completions)
-    # 'input' is a list; each item needs 'url' field — confirmed from 422 error
-    payload = {
-        "input": [
-            {"url": f"data:{content_type};base64,{base64_image}"}
-        ],
-        "render_mmcontent": False,
-    }
-
-    with httpx.Client() as http_client:
-        response = http_client.post(NVIDIA_OCR_URL, headers=headers, json=payload, timeout=60.0)
-
-    if response.status_code != 200:
-        raise RuntimeError(f"NVIDIA OCR HTTP {response.status_code}: {response.text[:300]}")
-
-    data = response.json()
-
-    # Response may be { "text": "..." } or { "choices": [{...}] }
-    raw_text = (
-        data.get("text")
-        or data.get("content")
-        or (data.get("choices", [{}])[0].get("message", {}).get("content"))
-        or json.dumps(data)
-    )
-
-    # Build an OCR-style prompt context and call Gemini to convert raw text → JSON schema
-    # (Nemotron-OCR returns raw markdown text, not structured JSON)
-    return _nvidia_text_to_json_schema(str(raw_text))
-
-
-def _nvidia_text_to_json_schema(raw_ocr_text: str) -> str:
-    """
-    Nemotron-OCR-v2 returns raw extracted text (markdown/plain).
-    Use Gemini to convert it to the required JSON schema.
-    """
-    from google import genai as gai
-    from google.genai import types as gai_types
-    google_api_key = os.getenv("GOOGLE_API_KEY")
-    if not google_api_key:
-        return json.dumps({"raw_text": raw_ocr_text})
-    client = gai.Client(api_key=google_api_key)
-    prompt = (
-        "Berikut adalah teks hasil OCR dari struk/nota. "
-        "Konversikan ke JSON murni dengan schema berikut (tanpa penjelasan, hanya JSON):\n"
-        '{"merchant_name": string, "transaction_date": string|null, '
-        '"items": [{"item": string, "quantity": integer, "price": number}], '
-        '"total_amount": number, "payment_method": string|null, "currency": "IDR"}\n\n'
-        f"Teks OCR:\n{raw_ocr_text}"
-    )
-    resp = client.models.generate_content(model="gemini-3.5-flash", contents=prompt)
-    return resp.text.strip()
+        print(f"[OCR] Gemini failed: {gemini_err}")
+        raise HTTPException(status_code=500, detail=f"OCR provider gagal: {gemini_err}")
 
 
 def _call_gemini_ocr(base64_image: str, content_type: str) -> str:
     """
-    Fallback OCR using Gemini 2.0 Flash Vision (new google.genai SDK).
-    Sends image directly with structured extraction prompt.
+    OCR using Gemini Flash Vision with Certified Financial Accountant protocol.
+    Includes retry logic, model fallback, document intelligence, and double-entry accounting.
     """
+    import time
     from google import genai as gai
     from google.genai import types as gai_types
+
     client = gai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
-    prompt = (
-        "Ekstrak data dari gambar struk/nota ini dan kembalikan JSON murni yang valid. "
-        'Schema wajib: {"merchant_name": string, "transaction_date": string|null, '
-        '"items": [{"item": string, "quantity": integer, "price": number}], '
-        '"total_amount": number, "payment_method": string|null, "currency": "IDR"}. '
-        "Aturan: price harus angka numerik tanpa simbol, quantity harus integer, "
-        "jangan tambahkan teks apa pun sebelum atau sesudah JSON."
-    )
+
+    prompt = """Anda adalah "Certified Financial Accountant & Document Intelligence Specialist".
+Tugas: Ekstrak, verifikasi matematis, klasifikasikan, dan bukukan dokumen keuangan dari gambar ini.
+
+PENTING: Gambar mungkin miring/terputar 90 derajat. Sesuaikan arah baca dengan teliti.
+
+## PROTOKOL PARSING DOKUMEN
+1. Identifikasi Jenis Dokumen:
+   - FAKTUR_KREDIT: Transaksi akrual (menimbulkan Utang/Piutang Usaha)
+   - NOTA_KONTAN / STRUK: Transaksi kas langsung
+   - DELIVERY_ORDER: Bukti fisik barang saja
+   - KUITANSI: Bukti pembayaran/pelunasan
+
+2. Diferensiasi Harga:
+   - JANGAN ambil harga master/karton jika beli eceran (TGH, KCL, Pcs)
+   - Cari kolom Total/Netto/Subtotal per baris sebagai nilai akhir
+   - Jika unit turunan: Subtotal = (Qty Beli / Isi Master) × Harga Net Master
+
+3. Ekstraksi Pajak & Diskon:
+   - Pisahkan diskon per item vs diskon faktur (bottom-line)
+   - Periksa PPN: include atau exclude
+
+## VALIDASI MATEMATIS (3 LAPIS)
+1. Row Check: Qty × Harga Efektif - Diskon Baris = Subtotal Baris
+2. Grand Total Check: Σ Subtotal - Diskon Faktur + PPN + Biaya Lain = Grand Total
+3. Jika selisih ≤ Rp 100: masukkan ke Selisih Pembulatan
+   Jika selisih > Rp 100: set "is_math_verified": false
+
+## CHART OF ACCOUNTS
+Aset: 1-1001 Kas, 1-1002 Bank, 1-1020 Piutang Usaha, 1-1030 Persediaan Barang Dagang,
+      1-1031 Persediaan Makanan & Minuman, 1-1032 Persediaan ATK & Perlengkapan
+Liabilitas: 2-1010 Utang Usaha, 2-1020 Utang PPN
+Pendapatan: 4-1001 Pendapatan Penjualan
+Beban: 5-1001 HPP, 6-1010 Beban Konsumsi, 6-1020 Beban Operasional, 6-9999 Selisih Pembulatan
+
+Aturan Jurnal: Total DEBIT = Total KREDIT.
+- Beli tunai: Debit Persediaan/Beban, Kredit Kas
+- Beli tempo/faktur: Debit Persediaan, Kredit Utang Usaha
+
+## FORMAT OUTPUT (JSON MURNI, TANPA TEKS LAIN)
+{
+  "document_metadata": {
+    "document_type": "FAKTUR_KREDIT | NOTA_KONTAN | DELIVERY_ORDER | STRUK",
+    "invoice_number": "string | null",
+    "transaction_date": "YYYY-MM-DD | null",
+    "due_date": "YYYY-MM-DD | null",
+    "vendor": {"name": "string", "tax_id_npwp": "string | null", "address": "string | null"},
+    "customer": {"name": "string | null", "customer_id": "string | null"}
+  },
+  "line_items": [
+    {
+      "item_code": "string | null",
+      "description": "string",
+      "quantity": 0,
+      "unit": "string",
+      "unit_price_effective": 0,
+      "discount_amount": 0,
+      "line_total_net": 0,
+      "account_mapping": "string"
+    }
+  ],
+  "financial_summary": {
+    "subtotal": 0,
+    "total_discount": 0,
+    "tax_ppn": 0,
+    "grand_total": 0,
+    "is_math_verified": true,
+    "math_discrepancy_amount": 0
+  },
+  "accounting_entries": [
+    {"account_code": "string", "account_name": "string", "debit": 0, "credit": 0}
+  ]
+}
+
+Jangan tambahkan teks apapun sebelum atau sesudah JSON."""
+
     image_data = gai_types.Part.from_bytes(
         data=base64.b64decode(base64_image),
         mime_type=content_type,
     )
-    resp = client.models.generate_content(
-        model="gemini-3.5-flash",
-        contents=[prompt, image_data],
-    )
-    return resp.text.strip()
+
+    # Try multiple models in order — if one is overloaded, try the next
+    models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
+    last_error = None
+
+    for model_name in models_to_try:
+        # Each model gets up to 2 retries with backoff
+        for attempt in range(2):
+            try:
+                print(f"[OCR] Trying {model_name} (attempt {attempt + 1})...")
+                resp = client.models.generate_content(
+                    model=model_name,
+                    contents=[prompt, image_data],
+                )
+                print(f"[OCR] ✅ Success with {model_name}")
+                return resp.text.strip()
+            except Exception as e:
+                last_error = e
+                err_str = str(e)
+                if "503" in err_str or "UNAVAILABLE" in err_str or "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                    wait_time = (attempt + 1) * 3  # 3s, 6s
+                    print(f"[OCR] ⚠️ {model_name} unavailable (attempt {attempt + 1}), waiting {wait_time}s...")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    # Non-retryable error, raise immediately
+                    raise
+        print(f"[OCR] ❌ {model_name} failed after retries, trying next model...")
+
+    # All models failed
+    raise RuntimeError(f"Semua model Gemini gagal setelah retry: {last_error}")
 
 
 

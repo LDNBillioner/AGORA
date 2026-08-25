@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, Integer, ForeignKey, DateTime, Text, JSON
+from sqlalchemy import Column, String, Float, Integer, ForeignKey, DateTime, Text, JSON, Boolean
 from sqlalchemy.sql import func
 from database import Base
 
@@ -31,3 +31,14 @@ class Transaction(Base):
     type = Column(String, default="expense") # 'income' or 'expense'
     category = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # ── Accounting Fields ────────────────────────────────────────────────────
+    document_type = Column(String, nullable=True)        # FAKTUR_KREDIT, NOTA_KONTAN, DELIVERY_ORDER, STRUK
+    invoice_number = Column(String, nullable=True)       # Nomor faktur/nota
+    vendor_name = Column(String, nullable=True)          # Nama vendor/supplier
+    tax_ppn = Column(Float, default=0)                   # Jumlah PPN
+    discount_total = Column(Float, default=0)            # Total diskon
+    accounting_entries = Column(JSON, nullable=True)      # [{account_code, account_name, debit, credit}]
+    is_math_verified = Column(Boolean, default=True)     # Status validasi matematis
+    math_discrepancy = Column(Float, default=0)          # Selisih pembulatan
+
