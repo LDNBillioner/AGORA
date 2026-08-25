@@ -19,4 +19,4 @@ WORKDIR /app/src
 # Hugging Face Spaces expects port 7860 by default
 EXPOSE 7860
 
-CMD ["uvicorn", "Engine:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD ["sh", "-c", "uvicorn Engine:app --host 0.0.0.0 --port ${PORT:-7860}"]
