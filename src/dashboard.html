@@ -61,7 +61,7 @@
     <div class="bg-white/60 backdrop-blur-sm border-b border-slate-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
             <div class="flex items-center justify-between">
-                <p class="text-sm text-slate-600">📊 Dashboard untuk: <strong id="userInfo" class="text-indigo-700">Loading...</strong></p>
+                <p class="text-sm text-slate-600"> Dashboard untuk: <strong id="userInfo" class="text-indigo-700">Loading...</strong></p>
                 <p class="text-xs text-slate-400" id="lastUpdated">Memuat data...</p>
             </div>
         </div>
@@ -74,7 +74,7 @@
             <div class="glass-card rounded-2xl p-6 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl animate-fade-in animate-fade-in-1">
                 <div class="flex items-center justify-between">
                     <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Total Pemasukan</h3>
-                    <span class="text-2xl">💰</span>
+                    <span class="text-2xl"></span>
                 </div>
                 <p class="mt-3 text-3xl font-extrabold text-emerald-600" id="totalIncome">Rp 0</p>
                 <div class="mt-2 h-1 w-full bg-emerald-100 rounded-full overflow-hidden">
@@ -84,7 +84,7 @@
             <div class="glass-card rounded-2xl p-6 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl animate-fade-in animate-fade-in-2">
                 <div class="flex items-center justify-between">
                     <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Total Pengeluaran</h3>
-                    <span class="text-2xl">🛒</span>
+                    <span class="text-2xl"></span>
                 </div>
                 <p class="mt-3 text-3xl font-extrabold text-rose-600" id="totalExpense">Rp 0</p>
                 <div class="mt-2 h-1 w-full bg-rose-100 rounded-full overflow-hidden">
@@ -94,7 +94,7 @@
             <div class="glass-card rounded-2xl p-6 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-xl animate-fade-in animate-fade-in-3">
                 <div class="flex items-center justify-between">
                     <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Profit Bersih</h3>
-                    <span class="text-2xl" id="profitEmoji">📈</span>
+                    <span class="text-2xl" id="profitEmoji"></span>
                 </div>
                 <p class="mt-3 text-3xl font-extrabold" id="netProfit">Rp 0</p>
                 <div class="mt-2 h-1 w-full bg-indigo-100 rounded-full overflow-hidden">
@@ -106,13 +106,13 @@
         <!-- Charts Section -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             <div class="bg-white rounded-2xl p-6 shadow-lg border border-slate-100 animate-fade-in animate-fade-in-3">
-                <h3 class="text-lg font-bold mb-4 text-slate-700">📊 Pemasukan vs Pengeluaran</h3>
+                <h3 class="text-lg font-bold mb-4 text-slate-700">Pemasukan vs Pengeluaran</h3>
                 <div class="relative h-72">
                     <canvas id="barChart"></canvas>
                 </div>
             </div>
             <div class="bg-white rounded-2xl p-6 shadow-lg border border-slate-100 animate-fade-in animate-fade-in-4">
-                <h3 class="text-lg font-bold mb-4 text-slate-700">🍩 Top Pengeluaran by Kategori</h3>
+                <h3 class="text-lg font-bold mb-4 text-slate-700"> Top Pengeluaran by Kategori</h3>
                 <div class="relative h-72 flex justify-center">
                     <canvas id="pieChart"></canvas>
                 </div>
@@ -121,7 +121,7 @@
 
         <!-- Transaction Count Badge -->
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-bold text-slate-700">📋 Transaksi Terakhir</h3>
+            <h3 class="text-lg font-bold text-slate-700"> Transaksi Terakhir</h3>
             <span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold" id="txCount">0 transaksi</span>
         </div>
 
@@ -143,7 +143,7 @@
                     <tbody class="bg-white divide-y divide-slate-100" id="tableBody">
                         <tr>
                             <td colspan="7" class="px-6 py-8 text-center text-sm text-slate-400">
-                                <div class="animate-pulse">⏳ Memuat data transaksi...</div>
+                                <div class="animate-pulse"> Memuat data transaksi...</div>
                             </td>
                         </tr>
                     </tbody>
@@ -197,7 +197,7 @@
                 const netProfit = summary.net_profit;
                 document.getElementById('netProfit').textContent = formatter.format(netProfit);
                 document.getElementById('netProfit').className = `mt-3 text-3xl font-extrabold ${netProfit >= 0 ? 'text-indigo-600' : 'text-rose-600'}`;
-                document.getElementById('profitEmoji').textContent = netProfit >= 0 ? '📈' : '📉';
+                document.getElementById('profitEmoji').textContent = netProfit >= 0 ? '' : '';
 
                 // Progress bars
                 const maxVal = Math.max(summary.total_income, summary.total_expense, 1);
@@ -258,8 +258,8 @@
                             });
                             journalHtml += '</tbody></table>';
                             const mathBadge = t.is_math_verified === false
-                                ? `<span class="ml-2 px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded-full">⚠️ Selisih: ${formatter.format(t.math_discrepancy || 0)}</span>`
-                                : '<span class="ml-2 px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full">✅ Terverifikasi</span>';
+                                ? `<span class="ml-2 px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded-full"> Selisih: ${formatter.format(t.math_discrepancy || 0)}</span>`
+                                : '<span class="ml-2 px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full"> Terverifikasi</span>';
                             journalRow = `<tr id="journal-${idx}" class="hidden"><td colspan="7" class="px-6 py-4 bg-indigo-50/30"><div class="flex items-center mb-2"><span class="text-sm font-semibold text-indigo-700">📒 Jurnal Akuntansi (Double-Entry)</span>${mathBadge}</div>${journalHtml}</td></tr>`;
                         }
 
@@ -286,7 +286,7 @@
 
             } catch (error) {
                 console.error("Error fetching data:", error);
-                document.getElementById('lastUpdated').textContent = `⚠️ Gagal memuat data`;
+                document.getElementById('lastUpdated').textContent = ` Gagal memuat data`;
             }
         }
 
