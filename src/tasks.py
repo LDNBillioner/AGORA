@@ -16,7 +16,7 @@ import models
 from rag import retrieve_past_transactions
 from agent import process_message
 
-# Config
+# Konfigurasi
 
 META_ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN", "")
 META_PHONE_NUMBER_ID = os.getenv("META_PHONE_NUMBER_ID", "")
@@ -36,7 +36,7 @@ ONBOARDING_MESSAGE = (
 )
 
 
-# WhatsApp API Helpers
+# Fungsi Pembantu API WhatsApp
 
 def send_whatsapp_message(to_number: str, message: str):
     """Sends a text message via Meta WhatsApp Cloud API (sync)."""
@@ -76,20 +76,20 @@ async def download_media_bytes(media_id: str) -> bytes:
     headers = {"Authorization": f"Bearer {META_ACCESS_TOKEN}"}
 
     async with httpx.AsyncClient(timeout=30) as client:
-        # Step 1: Resolve media URL
+        # Langkah 1: Dapatkan URL media
         url_resp = await client.get(meta_url, headers=headers)
         url_resp.raise_for_status()
         media_url = url_resp.json().get("url")
         if not media_url:
             raise ValueError(f"Could not resolve media URL for id={media_id}")
 
-        # Step 2: Download binary content
+        # Langkah 2: Unduh file media
         media_resp = await client.get(media_url, headers=headers)
         media_resp.raise_for_status()
         return media_resp.content
 
 
-# Audio: Gemini Multimodal STT
+# Audio: Ekstraksi suara (STT) via Gemini
 
 async def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/ogg") -> str:
     """
@@ -120,7 +120,7 @@ async def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/ogg") -> 
     return response.text.strip()
 
 
-# Image: OCR via Gemini Vision
+# Gambar: Ekstraksi teks (OCR) via Gemini Vision
 
 async def extract_receipt_text(image_bytes: bytes, mime_type: str = "image/jpeg") -> str:
     """
@@ -133,14 +133,14 @@ async def extract_receipt_text(image_bytes: bytes, mime_type: str = "image/jpeg"
         response.raise_for_status()
         ocr_data = response.json().get("data", {})
 
-    # Format OCR output into a comprehensive accounting description for the agent
+    # Format hasil OCR menjadi deskripsi akuntansi untuk agen
     items = ocr_data.get("items", [])
     total = ocr_data.get("total_amount", 0)
     merchant = ocr_data.get("merchant_name", "")
     date = ocr_data.get("transaction_date", "")
     payment = ocr_data.get("payment_method", "")
 
-    # Accounting-specific data
+    # Data khusus akuntansi
     doc_type = ocr_data.get("document_type", "STRUK")
     invoice_num = ocr_data.get("invoice_number", "")
     vendor = ocr_data.get("vendor_name", "") or merchant
@@ -200,7 +200,7 @@ async def extract_receipt_text(image_bytes: bytes, mime_type: str = "image/jpeg"
     return "\n".join(lines)
 
 
-# User / Tenant Helpers
+# Fungsi Pembantu Pengguna / Tenant
 
 def get_or_create_user(db, sender_number: str) -> tuple[models.User, bool]:
     """
@@ -211,7 +211,7 @@ def get_or_create_user(db, sender_number: str) -> tuple[models.User, bool]:
     if user:
         return user, False
 
-    # Auto-create default tenant if none exists
+    # Buat tenant default jika belum ada
     tenant = db.query(models.Tenant).first()
     if not tenant:
         tenant = models.Tenant(id="default-tenant", name="Default Tenant")
@@ -228,7 +228,7 @@ def get_or_create_user(db, sender_number: str) -> tuple[models.User, bool]:
     return user, True
 
 
-# Main Background Task
+# Fungsi Utama (Background Task)
 
 async def process_webhook_message(message_data: dict):
     """
@@ -249,25 +249,25 @@ async def process_webhook_message(message_data: dict):
 
     db = SessionLocal()
     try:
-        # 1. User / Tenant resolution
+        # 1. Resolusi Pengguna / Tenant
         user, is_new = get_or_create_user(db, sender_number)
         tenant_id = user.tenant_id
 
         if is_new:
             send_whatsapp_message(sender_number, ONBOARDING_MESSAGE)
-            return  # New users get onboarding first, process next message
+            return  # Pengguna baru akan masuk proses onboarding
 
-        # 2. Retrieve RAG context (50 past transactions)
-        # Use text body if available, otherwise generic query for audio/image
+        # 2. Ambil konteks RAG (50 transaksi terakhir)
+        # Gunakan teks jika ada, atau gunakan query default untuk gambar/audio
         msg_body = message_data.get("text", {}).get("body", "")
         text_query = msg_body if msg_body else "transaksi terbaru"
         rag_context = retrieve_past_transactions(tenant_id, text_query, k=50)
 
-        # 3. Multi-modal routing
+        # 3. Penentuan tipe pesan (Multi-modal)
         agent_input_text = None
 
         if msg_type == "text":
-            # Plain text message
+            # Pesan teks biasa
             agent_input_text = message_data.get("text", {}).get("body", "")
             if not agent_input_text:
                 send_whatsapp_message(
@@ -277,7 +277,7 @@ async def process_webhook_message(message_data: dict):
                 return
 
         elif msg_type == "audio":
-            # Voice note → Whisper STT
+            # Pesan suara
             audio_id = message_data.get("audio", {}).get("id")
             audio_mime = message_data.get("audio", {}).get("mime_type", "audio/ogg")
             if not audio_id:
@@ -305,7 +305,7 @@ async def process_webhook_message(message_data: dict):
                 return
 
         elif msg_type == "image":
-            # Photo/receipt → Gemini OCR
+            # Foto atau Struk belanja
             image_id = message_data.get("image", {}).get("id")
             image_mime = message_data.get("image", {}).get("mime_type", "image/jpeg")
             if not image_id:
@@ -333,7 +333,7 @@ async def process_webhook_message(message_data: dict):
                 return
 
         else:
-            # Unsupported message type
+            # Tipe pesan tidak didukung
             send_whatsapp_message(
                 sender_number,
                 "Maaf Kak, saya hanya bisa memproses pesan teks, "
@@ -341,7 +341,7 @@ async def process_webhook_message(message_data: dict):
             )
             return
 
-        # 4. Invoke Agent
+        # 4. Jalankan Agen AI
         result = process_message(
             tenant_id=tenant_id,
             user_id=sender_number,
@@ -353,7 +353,7 @@ async def process_webhook_message(message_data: dict):
         if not reply:
             reply = "Maaf Kak, ada masalah di sistem kami. Coba lagi ya 🙏"
 
-        # 5. Send reply back to user
+        # 5. Kirim balasan ke pengguna
         send_whatsapp_message(sender_number, reply)
 
     except Exception as e:

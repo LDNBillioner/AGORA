@@ -7,7 +7,7 @@ import os
 from datetime import datetime
 
 
-# Pydantic Schemas
+# Schema Pydantic
 
 class TransactionItemSchema(BaseModel):
     item: str = Field(..., description="Name of the item or service.")
@@ -42,7 +42,7 @@ class RecordTransactionSchema(BaseModel):
     )
     notes: Optional[str] = Field(None, description="Any additional notes.")
     currency: Optional[str] = Field("IDR", description="Currency code, default IDR.")
-    # Accounting Fields
+    # Kolom Akuntansi
     document_type: Optional[str] = Field(None, description="Document type: FAKTUR_KREDIT, NOTA_KONTAN, STRUK, DELIVERY_ORDER, KUITANSI")
     invoice_number: Optional[str] = Field(None, description="Invoice/receipt number if available.")
     vendor_name: Optional[str] = Field(None, description="Vendor/supplier name.")
@@ -74,11 +74,8 @@ class GetDashboardLinkSchema(BaseModel):
     pass
 
 
-# Tool Implementations
+# Implementasi Alat (Tools)
 
-# NOTE: tenant_id and user_id are injected from the agent state via a
-#       module-level context variable before the agent graph is invoked.
-# This avoids threading complexity with LangChain's tool interface.
 _current_context: dict = {}
 
 
@@ -99,7 +96,7 @@ def record_transaction(
     payment_method: Optional[str] = None,
     notes: Optional[str] = None,
     currency: Optional[str] = "IDR",
-    # Accounting fields
+    # Kolom akuntansi
     document_type: Optional[str] = None,
     invoice_number: Optional[str] = None,
     vendor_name: Optional[str] = None,
@@ -115,7 +112,7 @@ def record_transaction(
     Call this tool ONLY when you have extracted sufficient information from the user's message.
     DO NOT hallucinate missing values — use request_clarification instead.
     """
-    # Import here to avoid circular imports at module load
+    # Import di dalam fungsi untuk mencegah error circular import
     from database import SessionLocal
     import models
 
@@ -125,14 +122,14 @@ def record_transaction(
         tenant_id = _current_context.get("tenant_id", "default-tenant")
         user_id = _current_context.get("user_id")
 
-        # Ensure tenant exists
+        # Pastikan tenant tersedia
         tenant = db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
         if not tenant:
             tenant = models.Tenant(id=tenant_id, name="Default Tenant")
             db.add(tenant)
             db.commit()
 
-        # Normalize items
+        # Normalisasi daftar item
         normalized_items = []
         for raw in items:
             if hasattr(raw, "model_dump"):
@@ -142,14 +139,14 @@ def record_transaction(
             elif isinstance(raw, dict):
                 normalized_items.append(raw)
 
-        # Calculate total if not provided
+        # Hitung total jika kosong
         if total_amount is None:
             total_amount = sum(
                 float(i.get("price", 0)) * int(i.get("quantity", 1))
                 for i in normalized_items
             )
 
-        # Parse transaction date
+        # Parsing tanggal transaksi
         txn_date = None
         if transaction_date:
             try:
@@ -173,7 +170,7 @@ def record_transaction(
             transaction_date=txn_date,
             payment_method=payment_method,
             currency=currency or "IDR",
-            # Accounting fields
+            # Kolom akuntansi
             document_type=document_type,
             invoice_number=invoice_number,
             vendor_name=vendor_name,
@@ -187,7 +184,7 @@ def record_transaction(
         db.commit()
         db.refresh(db_transaction)
 
-        # Add to RAG vector store for future context
+        # Simpan ke basis data vektor RAG
         try:
             from rag import add_transaction_to_rag
             rag_text = (
@@ -209,7 +206,7 @@ def record_transaction(
                 },
             )
         except Exception as rag_err:
-            # RAG indexing failure must not block transaction recording
+            # Jika RAG gagal, transaksi tetap dicatat
             print(f"[RAG] Failed to index transaction: {rag_err}")
 
         return (
@@ -294,7 +291,7 @@ def get_dashboard_link() -> str:
     tenant_id = _current_context.get("tenant_id", "default-tenant")
     user_id = _current_context.get("user_id", "")
     
-    # Try to dynamically get the Cloudflare Tunnel URL
+    # Coba ambil URL Cloudflare Tunnel
     public_url = os.getenv("PUBLIC_URL", "")
     if not public_url:
         import urllib.request
@@ -308,11 +305,11 @@ def get_dashboard_link() -> str:
         except Exception:
             pass
             
-    # Fallback to localhost if cloudflare is not running
+    # Gunakan localhost jika cloudflare mati
     if not public_url:
         public_url = os.getenv("AGORA_ENGINE_URL", "http://localhost:8000")
     
-    # Generate per-user link
+    # Buat tautan khusus pengguna
     if user_id:
         dashboard_url = f"{public_url}/dashboard/ui/{tenant_id}/{user_id}"
     else:
@@ -321,5 +318,5 @@ def get_dashboard_link() -> str:
     return f"DASHBOARD_URL: {dashboard_url}"
 
 
-# Tool Registry
+# Registrasi Alat (Tools)
 agent_tools = [record_transaction, request_clarification, recap_transactions, get_dashboard_link]

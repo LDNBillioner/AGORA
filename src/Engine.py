@@ -551,7 +551,7 @@ def save_transaction(payload: SaveTransactionRequest, db: Session = Depends(get_
     try:
         receipt_data = payload.receipt_data or {}
 
-        # Normalize items
+        # Normalisasi daftar item
         if payload.items:
             normalized_items = [item.model_dump() for item in payload.items]
         else:
@@ -781,7 +781,7 @@ def register_user(payload: RegisterUserRequest, db: Session = Depends(get_db)):
     Register a new user (owner or employee) for a tenant.
     The phone_number is used as the WhatsApp sender ID.
     """
-    # Ensure tenant exists
+    # Pastikan tenant tersedia
     tenant = db.query(models.Tenant).filter(models.Tenant.id == payload.tenant_id).first()
     if not tenant:
         raise HTTPException(

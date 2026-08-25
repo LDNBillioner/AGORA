@@ -38,7 +38,7 @@ def add_transaction_to_rag(tenant_id: str, text: str, metadata: dict = None):
         doc = Document(page_content=text, metadata=metadata or {})
         vs.add_documents([doc])
     except Exception as e:
-        # Non-fatal — log and continue
+        # Error tidak fatal, lanjutkan
         print(f"[RAG] add_transaction_to_rag failed: {e}")
 
 
@@ -49,7 +49,7 @@ def retrieve_past_transactions(tenant_id: str, query: str, k: int = 50) -> str:
 
     PRD requirement: inject 50 past transactions as context into the agent prompt.
     """
-    # Primary: PGVector semantic search
+    # Utama: Pencarian semantik PGVector
     try:
         vs = _get_vector_store(tenant_id)
         docs = vs.similarity_search(query, k=k)
@@ -59,7 +59,7 @@ def retrieve_past_transactions(tenant_id: str, query: str, k: int = 50) -> str:
     except Exception as pgvec_err:
         print(f"[RAG] PGVector search failed, trying DB fallback: {pgvec_err}")
 
-    # Fallback: plain SQLAlchemy query (most recent N transactions)
+    # Cadangan: Query SQLAlchemy biasa
     try:
         from database import SessionLocal
         import models
