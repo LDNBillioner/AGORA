@@ -148,7 +148,7 @@ def seed_data():
         ).first()
 
         if existing_tenant:
-            print("ℹ️  Tenant 'default-tenant' sudah ada, skip seeding.")
+            print("  Tenant 'default-tenant' sudah ada, skip seeding.")
         else:
             tenant = models.Tenant(id="default-tenant", name="Toko Uji Coba AGORA")
             db.add(tenant)
@@ -161,7 +161,7 @@ def seed_data():
         ).first()
 
         if existing_user:
-            print("ℹ️  User owner '628123456789' sudah ada, skip seeding.")
+            print("  User owner '628123456789' sudah ada, skip seeding.")
         else:
             owner = models.User(
                 id="628123456789",
