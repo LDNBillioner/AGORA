@@ -327,10 +327,11 @@ async def process_webhook_message(message_data: dict):
 
     except Exception as e:
         print(f"[TASK] Unhandled error processing webhook: {e}")
-        send_whatsapp_message(
-            sender_number,
-            "Maaf Kak, terjadi kesalahan di sistem kami. "
-            "Tim kami sudah diberitahu. Coba lagi dalam beberapa menit ya 🙏",
-        )
+        if sender_number:
+            send_whatsapp_message(
+                sender_number,
+                "Maaf Kak, terjadi kesalahan di sistem kami. "
+                "Tim kami sudah diberitahu. Coba lagi dalam beberapa menit ya 🙏",
+            )
     finally:
         db.close()
