@@ -32,7 +32,7 @@ def check_env():
     print_step(0, "Memeriksa konfigurasi .env")
 
     if not DATABASE_URL or "your_project_ref" in DATABASE_URL or "your_db_password" in DATABASE_URL:
-        print("❌ ERROR: DATABASE_URL belum dikonfigurasi!")
+        print(" ERROR: DATABASE_URL belum dikonfigurasi!")
         print()
         print("Buka file .env dan ganti DATABASE_URL dengan URL dari Supabase.")
         print("Contoh format:")
@@ -52,7 +52,7 @@ def check_env():
         masked = masked[:start] + "****" + masked[end:]
     except ValueError:
         pass
-    print(f"✅ DATABASE_URL terdeteksi: {masked}")
+    print(f" DATABASE_URL terdeteksi: {masked}")
 
 
 def test_connection():
@@ -66,11 +66,11 @@ def test_connection():
         with engine.connect() as conn:
             result = conn.execute(text("SELECT version();"))
             version = result.scalar()
-            print(f"✅ Berhasil terhubung ke database!")
+            print(f" Berhasil terhubung ke database!")
             print(f"   PostgreSQL version: {version[:60]}...")
             return True
     except Exception as e:
-        print(f"❌ Gagal terhubung ke database: {e}")
+        print(f" Gagal terhubung ke database: {e}")
         print()
         print("Kemungkinan masalah:")
         print("  - URL salah atau password salah")
@@ -90,9 +90,9 @@ def enable_pgvector():
         with engine.connect() as conn:
             conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
             conn.commit()
-            print("✅ Ekstensi pgvector berhasil diaktifkan!")
+            print(" Ekstensi pgvector berhasil diaktifkan!")
     except Exception as e:
-        print(f"⚠️  Gagal mengaktifkan pgvector: {e}")
+        print(f"️  Gagal mengaktifkan pgvector: {e}")
         print("   (Pastikan pgvector sudah diaktifkan di Supabase Dashboard → Database → Extensions)")
         print("   Lanjut ke step berikutnya...")
 
@@ -109,28 +109,28 @@ def run_migrations():
             cwd=os.path.dirname(os.path.abspath(__file__)),
         )
         if result.returncode == 0:
-            print("✅ Migrasi berhasil! Tabel sudah terbuat:")
+            print(" Migrasi berhasil! Tabel sudah terbuat:")
             print("   - tenants (data bisnis/toko)")
             print("   - users (pemilik & karyawan)")
             print("   - transactions (catatan transaksi)")
         else:
             stderr = result.stderr.strip()
             if "already exists" in stderr.lower() or "already up to date" in stderr.lower():
-                print("✅ Tabel sudah ada sebelumnya (up to date).")
+                print(" Tabel sudah ada sebelumnya (up to date).")
             else:
-                print(f"⚠️  Alembic output: {stderr}")
+                print(f"️  Alembic output: {stderr}")
                 # Try fallback: create tables directly
                 print("   Mencoba membuat tabel secara langsung...")
                 from database import engine, Base
                 import models  # noqa: F401
                 Base.metadata.create_all(bind=engine)
-                print("✅ Tabel berhasil dibuat via create_all()!")
+                print(" Tabel berhasil dibuat via create_all()!")
     except FileNotFoundError:
-        print("⚠️  Alembic tidak ditemukan, membuat tabel secara langsung...")
+        print("️  Alembic tidak ditemukan, membuat tabel secara langsung...")
         from database import engine, Base
         import models  # noqa: F401
         Base.metadata.create_all(bind=engine)
-        print("✅ Tabel berhasil dibuat via create_all()!")
+        print(" Tabel berhasil dibuat via create_all()!")
 
 
 def seed_data():
@@ -153,7 +153,7 @@ def seed_data():
             tenant = models.Tenant(id="default-tenant", name="Toko Uji Coba AGORA")
             db.add(tenant)
             db.commit()
-            print("✅ Tenant dibuat: 'Toko Uji Coba AGORA' (ID: default-tenant)")
+            print(" Tenant dibuat: 'Toko Uji Coba AGORA' (ID: default-tenant)")
 
         # Check if owner user already exists
         existing_user = db.query(models.User).filter(
@@ -170,11 +170,11 @@ def seed_data():
             )
             db.add(owner)
             db.commit()
-            print("✅ User owner dibuat: '628123456789'")
+            print(" User owner dibuat: '628123456789'")
 
     except Exception as e:
         db.rollback()
-        print(f"❌ Gagal seeding: {e}")
+        print(f" Gagal seeding: {e}")
     finally:
         db.close()
 
@@ -182,7 +182,7 @@ def seed_data():
 def print_summary():
     """Final summary."""
     print(f"\n{'='*60}")
-    print("  🎉 SETUP DATABASE SELESAI!")
+    print("   SETUP DATABASE SELESAI!")
     print(f"{'='*60}")
     print()
     print("Selanjutnya:")
@@ -199,7 +199,7 @@ def print_summary():
 
 if __name__ == "__main__":
     print()
-    print("🚀 AGORA AI Accountant — Database Setup")
+    print(" AGORA AI Accountant — Database Setup")
     print("=" * 60)
 
     check_env()

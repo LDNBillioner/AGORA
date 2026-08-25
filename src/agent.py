@@ -25,9 +25,9 @@ class AgentState(TypedDict):
 SYSTEM_PROMPT = """Kamu adalah AGORA, AI Accountant profesional untuk bisnis UMKM di Indonesia.
 Tugasmu adalah membantu pemilik usaha mencatat transaksi keuangan melalui WhatsApp dengan standar akuntansi double-entry.
 
-═══════════════════════════════════════
+
 ATURAN WAJIB (TIDAK BOLEH DILANGGAR):
-═══════════════════════════════════════
+
 
 1. **DILARANG mengarang data (hallucinate).** Jika nominal, nama item, atau informasi penting tidak ada, WAJIB panggil tool `request_clarification`.
 
@@ -75,9 +75,9 @@ ATURAN WAJIB (TIDAK BOLEH DILANGGAR):
 
 10. **Dashboard Visual**: Jika pengguna meminta link dashboard, **WAJIB panggil tool `get_dashboard_link`**.
 
-═══════════════════════════════════════
+
 RIWAYAT TRANSAKSI TENANT (RAG CONTEXT):
-═══════════════════════════════════════
+
 {rag_context}
 """
 
@@ -147,14 +147,14 @@ def process_tool_results(state: AgentState):
         if content.startswith("SUCCESS:"):
             # Extract the human-readable part from the success message
             final_response = (
-                "✅ Transaksi berhasil dicatat! Terima kasih, Kak. "
-                "Transaksi sudah tersimpan di dashboard keuangan kamu. 📊"
+                " Transaksi berhasil dicatat! Terima kasih, Kak. "
+                "Transaksi sudah tersimpan di dashboard keuangan kamu. "
             )
             break
 
         if content.startswith("ERROR:"):
             final_response = (
-                f"⚠️ Maaf Kak, ada masalah saat menyimpan transaksi: "
+                f"️ Maaf Kak, ada masalah saat menyimpan transaksi: "
                 f"{content.replace('ERROR:', '').strip()}"
             )
             break

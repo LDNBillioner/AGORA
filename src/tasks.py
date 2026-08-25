@@ -25,14 +25,14 @@ _port = os.getenv("PORT", "8000")
 AGORA_ENGINE_URL = os.getenv("AGORA_ENGINE_URL", f"http://localhost:{_port}")
 
 ONBOARDING_MESSAGE = (
-    "👋 Halo! Selamat datang di *AGORA AI Accountant*!\n\n"
+    " Halo! Selamat datang di *AGORA AI Accountant*!\n\n"
     "Saya siap membantu mencatat keuangan bisnis kamu langsung dari WhatsApp.\n\n"
     "Cukup kirim pesan seperti:\n"
-    "• 📝 *Teks:* \"Jual 5 kopi susu @15rb\"\n"
-    "• 🎙️ *Voice Note:* Rekam nominal transaksi kamu\n"
-    "• 🧾 *Foto Struk:* Foto nota/struk belanja langsung\n\n"
-    "Saya akan otomatis mencatatnya ke dashboard keuangan kamu. 📊\n\n"
-    "Ayo mulai catat transaksi pertama kamu! 🚀"
+    "•  *Teks:* \"Jual 5 kopi susu @15rb\"\n"
+    "• ️ *Voice Note:* Rekam nominal transaksi kamu\n"
+    "•  *Foto Struk:* Foto nota/struk belanja langsung\n\n"
+    "Saya akan otomatis mencatatnya ke dashboard keuangan kamu. \n\n"
+    "Ayo mulai catat transaksi pertama kamu! "
 )
 
 
@@ -178,10 +178,10 @@ async def extract_receipt_text(image_bytes: bytes, mime_type: str = "image/jpeg"
     lines.append(f"Grand Total: Rp {total:,.0f}")
 
     if not is_verified:
-        lines.append(f"\n⚠️ PERINGATAN: Validasi matematis GAGAL (selisih: Rp {math_disc:,.0f})")
+        lines.append(f"\n️ PERINGATAN: Validasi matematis GAGAL (selisih: Rp {math_disc:,.0f})")
 
     if acct_entries:
-        lines.append("\n📒 Jurnal Akuntansi (Double-Entry):")
+        lines.append("\n Jurnal Akuntansi (Double-Entry):")
         for entry in acct_entries:
             code = entry.get("account_code", "")
             name = entry.get("account_name", "")
@@ -272,7 +272,7 @@ async def process_webhook_message(message_data: dict):
             if not agent_input_text:
                 send_whatsapp_message(
                     sender_number,
-                    "Maaf Kak, pesan teks tidak terbaca. Coba kirim ulang ya 🙏",
+                    "Maaf Kak, pesan teks tidak terbaca. Coba kirim ulang ya ",
                 )
                 return
 
@@ -283,13 +283,13 @@ async def process_webhook_message(message_data: dict):
             if not audio_id:
                 send_whatsapp_message(
                     sender_number,
-                    "Maaf Kak, voice note tidak terdeteksi. Coba kirim ulang ya 🙏",
+                    "Maaf Kak, voice note tidak terdeteksi. Coba kirim ulang ya ",
                 )
                 return
 
             send_whatsapp_message(
                 sender_number,
-                "🎙️ Voice note diterima! Sedang mentranskrip audio kamu...",
+                "️ Voice note diterima! Sedang mentranskrip audio kamu...",
             )
             try:
                 audio_bytes = await download_media_bytes(audio_id)
@@ -299,8 +299,8 @@ async def process_webhook_message(message_data: dict):
                 print(f"[STT] Error: {stt_err}")
                 send_whatsapp_message(
                     sender_number,
-                    "⚠️ Maaf Kak, gagal mentranskrip voice note. "
-                    "Coba ketik manual atau kirim ulang ya 🙏",
+                    "️ Maaf Kak, gagal mentranskrip voice note. "
+                    "Coba ketik manual atau kirim ulang ya ",
                 )
                 return
 
@@ -311,13 +311,13 @@ async def process_webhook_message(message_data: dict):
             if not image_id:
                 send_whatsapp_message(
                     sender_number,
-                    "Maaf Kak, gambar tidak terdeteksi. Coba kirim ulang ya 🙏",
+                    "Maaf Kak, gambar tidak terdeteksi. Coba kirim ulang ya ",
                 )
                 return
 
             send_whatsapp_message(
                 sender_number,
-                "🧾 Struk/nota diterima! Sedang membaca dengan Gemini Vision AI...",
+                " Struk/nota diterima! Sedang membaca dengan Gemini Vision AI...",
             )
             try:
                 image_bytes = await download_media_bytes(image_id)
@@ -327,8 +327,8 @@ async def process_webhook_message(message_data: dict):
                 print(f"[OCR] Error: {ocr_err}")
                 send_whatsapp_message(
                     sender_number,
-                    "⚠️ Maaf Kak, gagal membaca struk. "
-                    "Pastikan foto jelas dan coba lagi ya 🙏",
+                    "️ Maaf Kak, gagal membaca struk. "
+                    "Pastikan foto jelas dan coba lagi ya ",
                 )
                 return
 
@@ -337,7 +337,7 @@ async def process_webhook_message(message_data: dict):
             send_whatsapp_message(
                 sender_number,
                 "Maaf Kak, saya hanya bisa memproses pesan teks, "
-                "voice note 🎙️, dan foto struk 🧾.",
+                "voice note ️, dan foto struk .",
             )
             return
 
@@ -351,7 +351,7 @@ async def process_webhook_message(message_data: dict):
 
         reply = result.get("reply", "")
         if not reply:
-            reply = "Maaf Kak, ada masalah di sistem kami. Coba lagi ya 🙏"
+            reply = "Maaf Kak, ada masalah di sistem kami. Coba lagi ya "
 
         # 5. Kirim balasan ke pengguna
         send_whatsapp_message(sender_number, reply)
@@ -361,7 +361,7 @@ async def process_webhook_message(message_data: dict):
         send_whatsapp_message(
             sender_number,
             "Maaf Kak, terjadi kesalahan di sistem kami. "
-            "Tim kami sudah diberitahu. Coba lagi dalam beberapa menit ya 🙏",
+            "Tim kami sudah diberitahu. Coba lagi dalam beberapa menit ya ",
         )
     finally:
         db.close()

@@ -516,20 +516,20 @@ Jangan tambahkan teks apapun sebelum atau sesudah JSON."""
                     model=model_name,
                     contents=[prompt, image_data],
                 )
-                print(f"[OCR] ✅ Success with {model_name}")
+                print(f"[OCR]  Success with {model_name}")
                 return resp.text.strip()
             except Exception as e:
                 last_error = e
                 err_str = str(e)
                 if "503" in err_str or "UNAVAILABLE" in err_str or "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
                     wait_time = (attempt + 1) * 3  # 3s, 6s
-                    print(f"[OCR] ⚠️ {model_name} unavailable (attempt {attempt + 1}), waiting {wait_time}s...")
+                    print(f"[OCR] ️ {model_name} unavailable (attempt {attempt + 1}), waiting {wait_time}s...")
                     time.sleep(wait_time)
                     continue
                 else:
                     # Non-retryable error, raise immediately
                     raise
-        print(f"[OCR] ❌ {model_name} failed after retries, trying next model...")
+        print(f"[OCR]  {model_name} failed after retries, trying next model...")
 
     # All models failed
     raise RuntimeError(f"Semua model Gemini gagal setelah retry: {last_error}")

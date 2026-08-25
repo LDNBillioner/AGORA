@@ -12,7 +12,7 @@
 
 ---
 
-## 📖 Latar Belakang
+##  Latar Belakang
 
 Di tengah pesatnya penetrasi digitalisasi nasional, lanskap teknologi global saat ini sedang mengalami transformasi fundamental dari era **Generative AI** menuju era **Agentic AI**. Era baru ini ditandai oleh pergeseran sistem AI dari sekadar penyedia informasi pasif menjadi entitas otonom yang mampu melakukan pemikiran logis (*reasoning*) dan mengambil tindakan nyata (*action-oriented automation*) secara mandiri.
 
@@ -22,7 +22,7 @@ Sayangnya, potensi lompatan teknologi ini belum dirasakan secara inklusif oleh p
 2. **Penundaan Administrasi (*Procrastination Overflow*):** Beban operasional fisik membuat pencatatan ditunda hingga malam hari, memicu risiko hilang nota dan kesalahan input manual.
 3. **Kebutuhan Solusi Instan (*Instant Solution in Critical Moments*):** Pencatatan harus beroperasi dalam hitungan detik di sela-sela melayani pelanggan tanpa mengganggu operasional.
 
-## 🚀 Solusi AGORA
+##  Solusi AGORA
 
 Melalui pemanfaatan platform komunikasi harian **WhatsApp** sebagai pintu gerbang utama (*conversational gateway*), AGORA menjembatani kesenjangan digital tersebut. 
 
@@ -32,7 +32,7 @@ Pengguna cukup **mengambil dan mengirimkan foto struk belanja** atau sekadar men
 - Menyimpan data transaksi dengan standar akuntansi *double-entry*.
 - Secara otomatis dan *real-time* mengupdate stok inventaris di database.
 
-## 🎯 Tujuan & Manfaat
+##  Tujuan & Manfaat
 
 ### Tujuan
 - **Efisiensi Instan:** Memfasilitasi pencatatan kas masuk/keluar melalui WhatsApp tanpa menyita waktu.
@@ -47,7 +47,7 @@ Pengguna cukup **mengambil dan mengirimkan foto struk belanja** atau sekadar men
 
 ---
 
-## 🛠️ Arsitektur & Teknologi Utama
+## ️ Arsitektur & Teknologi Utama
 
 - **Backend Framework:** FastAPI (Python)
 - **AI & LLM:** Google Gemini 3.6 Flash (Vision OCR, Function Calling)
@@ -57,7 +57,7 @@ Pengguna cukup **mengambil dan mengirimkan foto struk belanja** atau sekadar men
 
 ---
 
-## ⚙️ Cara Instalasi & Konfigurasi (Setup)
+## ️ Cara Instalasi & Konfigurasi (Setup)
 
 ### 1. Kloning Repository & Instalasi Dependensi
 ```bash
@@ -112,7 +112,7 @@ uvicorn Engine:app --reload --port 8000
 
 ---
 
-## 📱 Cara Penggunaan Sistem
+##  Cara Penggunaan Sistem
 
 1. **Mulai Percakapan:** Simpan nomor WhatsApp bisnis yang telah dihubungkan.
 2. **Pencatatan Berbasis Teks:**
@@ -127,5 +127,5 @@ uvicorn Engine:app --reload --port 8000
 
 ---
 <div align="center">
-  <i>Dibangun untuk memberdayakan UMKM Indonesia menuju Era Agentic AI. 🚀</i>
+  <i>Dibangun untuk memberdayakan UMKM Indonesia menuju Era Agentic AI. </i>
 </div>
