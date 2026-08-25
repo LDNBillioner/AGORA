@@ -116,50 +116,90 @@ async def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/ogg") -> 
 
     response = await asyncio.to_thread(
         client.models.generate_content,
-        model="gemini-3.5-flash",
+        model="gemini-2.5-flash",
         contents=[prompt, audio_part],
     )
     return response.text.strip()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Image: OCR via AGORA Engine
+# Image: OCR via Gemini Vision
 # ─────────────────────────────────────────────────────────────────────────────
 
 async def extract_receipt_text(image_bytes: bytes, mime_type: str = "image/jpeg") -> str:
     """
-    Sends image bytes to the local /extract-receipt endpoint (NVIDIA Nemotron-OCR).
-    Returns a formatted string description of the receipt contents for the agent.
+    Sends image bytes to the local /extract-receipt endpoint (Gemini Vision OCR).
+    Returns a formatted string with full accounting data for the agent.
     """
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with httpx.AsyncClient(timeout=120) as client:
         files = {"file": ("receipt.jpg", io.BytesIO(image_bytes), mime_type)}
         response = await client.post(f"{AGORA_ENGINE_URL}/extract-receipt", files=files)
         response.raise_for_status()
         ocr_data = response.json().get("data", {})
 
-    # Format OCR output into a natural-language description for the agent
+    # Format OCR output into a comprehensive accounting description for the agent
     items = ocr_data.get("items", [])
     total = ocr_data.get("total_amount", 0)
     merchant = ocr_data.get("merchant_name", "")
     date = ocr_data.get("transaction_date", "")
     payment = ocr_data.get("payment_method", "")
 
-    lines = ["[STRUK/NOTA TERDETEKSI — Data OCR:]"]
-    if merchant:
+    # Accounting-specific data
+    doc_type = ocr_data.get("document_type", "STRUK")
+    invoice_num = ocr_data.get("invoice_number", "")
+    vendor = ocr_data.get("vendor_name", "") or merchant
+    tax_ppn = ocr_data.get("tax_ppn", 0)
+    discount = ocr_data.get("discount_total", 0)
+    is_verified = ocr_data.get("is_math_verified", True)
+    math_disc = ocr_data.get("math_discrepancy", 0)
+    acct_entries = ocr_data.get("accounting_entries", [])
+
+    lines = ["[DOKUMEN KEUANGAN TERDETEKSI — Data OCR + Akuntansi:]"]
+    lines.append(f"Jenis Dokumen: {doc_type}")
+    if invoice_num:
+        lines.append(f"No. Faktur/Nota: {invoice_num}")
+    if vendor:
+        lines.append(f"Vendor/Supplier: {vendor}")
+    if merchant and merchant != vendor:
         lines.append(f"Merchant: {merchant}")
     if date:
         lines.append(f"Tanggal: {date}")
     if payment:
         lines.append(f"Pembayaran: {payment}")
-    lines.append("Item:")
+
+    lines.append("\nItem:")
     for item in items:
-        lines.append(
-            f"  - {item.get('item')} x{item.get('quantity')} "
-            f"@ Rp {item.get('price'):,.0f}"
-        )
-    lines.append(f"Total: Rp {total:,.0f}")
+        item_name = item.get("item", "")
+        qty = item.get("quantity", 1)
+        price = item.get("price", 0)
+        unit = item.get("unit", "pcs")
+        lines.append(f"  - {item_name} x{qty} {unit} @ Rp {price:,.0f}")
+
+    if discount:
+        lines.append(f"\nTotal Diskon: Rp {discount:,.0f}")
+    if tax_ppn:
+        lines.append(f"PPN: Rp {tax_ppn:,.0f}")
+    lines.append(f"Grand Total: Rp {total:,.0f}")
+
+    if not is_verified:
+        lines.append(f"\n⚠️ PERINGATAN: Validasi matematis GAGAL (selisih: Rp {math_disc:,.0f})")
+
+    if acct_entries:
+        lines.append("\n📒 Jurnal Akuntansi (Double-Entry):")
+        for entry in acct_entries:
+            code = entry.get("account_code", "")
+            name = entry.get("account_name", "")
+            debit = entry.get("debit", 0)
+            credit = entry.get("credit", 0)
+            if debit:
+                lines.append(f"  Debit  {code} {name}: Rp {debit:,.0f}")
+            if credit:
+                lines.append(f"  Kredit {code} {name}: Rp {credit:,.0f}")
+
     lines.append(
-        "\nTolong catat transaksi pengeluaran ini sesuai data di atas."
+        "\nTolong catat transaksi ini sesuai data di atas, termasuk "
+        "document_type, invoice_number, vendor_name, tax_ppn, discount_total, "
+        "accounting_entries, is_math_verified, dan math_discrepancy."
     )
     return "\n".join(lines)
 
@@ -200,13 +240,12 @@ def get_or_create_user(db, sender_number: str) -> tuple[models.User, bool]:
 
 async def process_webhook_message(message_data: dict):
     """
-    Async background task to process an incoming WhatsApp message.
-
-    Multi-modal routing:
-      text  → agent
-      audio → Whisper STT → agent
-      image → NVIDIA Nemotron-OCR → agent
-
+    Background tasks for processing WhatsApp messages.
+    Pipeline:
+    - Text → AI Agent
+    - Audio → Whisper/Gemini STT → Agent
+    - Image → Gemini Vision OCR → Agent
+    
     Always returns 200 immediately to Meta (called from webhook endpoint).
     """
     sender_number: str = message_data.get("from", "")
@@ -274,7 +313,7 @@ async def process_webhook_message(message_data: dict):
                 return
 
         elif msg_type == "image":
-            # Photo/receipt → NVIDIA Nemotron-OCR
+            # Photo/receipt → Gemini OCR
             image_id = message_data.get("image", {}).get("id")
             image_mime = message_data.get("image", {}).get("mime_type", "image/jpeg")
             if not image_id:
@@ -286,7 +325,7 @@ async def process_webhook_message(message_data: dict):
 
             send_whatsapp_message(
                 sender_number,
-                "🧾 Struk/nota diterima! Sedang membaca dengan NVIDIA OCR...",
+                "🧾 Struk/nota diterima! Sedang membaca dengan Gemini Vision AI...",
             )
             try:
                 image_bytes = await download_media_bytes(image_id)

@@ -163,15 +163,14 @@ def seed_data():
         if existing_user:
             print("ℹ️  User owner '628123456789' sudah ada, skip seeding.")
         else:
-            user = models.User(
+            owner = models.User(
                 id="628123456789",
                 tenant_id="default-tenant",
-                role="owner",
                 name="Owner AGORA",
             )
-            db.add(user)
+            db.add(owner)
             db.commit()
-            print("✅ User owner dibuat: '628123456789' (role: owner)")
+            print("✅ User owner dibuat: '628123456789'")
 
     except Exception as e:
         db.rollback()
