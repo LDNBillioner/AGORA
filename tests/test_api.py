@@ -116,6 +116,51 @@ class TestDashboardSummary:
         assert summary["transaction_count"] == 2
 
 
+class TestDashboardTransactions:
+    def _seed(self, client, tenant, type_, price):
+        return client.post(
+            "/transactions",
+            json={
+                "tenant_id": tenant,
+                "items": [{"item": f"{type_}-{price}", "quantity": 1, "price": price}],
+                "type": type_,
+            },
+        )
+
+    def test_pagination_and_total_count(self, client):
+        tenant = f"tenant-{uuid.uuid4().hex[:8]}"
+        for price in (1000, 2000, 3000):
+            resp = self._seed(client, tenant, "income", price)
+            assert resp.status_code == 200
+
+        body = client.get(
+            "/dashboard/transactions",
+            params={"tenant_id": tenant, "page": 1, "page_size": 2},
+        ).json()
+        assert body["pagination"]["total_count"] == 3
+        assert body["pagination"]["total_pages"] == 2
+        assert len(body["transactions"]) == 2
+
+    def test_type_filter(self, client):
+        tenant = f"tenant-{uuid.uuid4().hex[:8]}"
+        self._seed(client, tenant, "income", 1000)
+        self._seed(client, tenant, "expense", 500)
+
+        body = client.get(
+            "/dashboard/transactions",
+            params={"tenant_id": tenant, "type": "expense"},
+        ).json()
+        assert body["pagination"]["total_count"] == 1
+        assert body["transactions"][0]["type"] == "expense"
+
+
+class TestExtractReceiptValidation:
+    def test_requires_file(self, client):
+        # No AI keys or network involved — FastAPI rejects the empty upload.
+        resp = client.post("/extract-receipt")
+        assert resp.status_code == 422
+
+
 class TestUserManagement:
     def test_register_user_requires_existing_tenant(self, client):
         resp = client.post(

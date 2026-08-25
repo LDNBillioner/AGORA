@@ -14,8 +14,9 @@ from pathlib import Path
 SRC_DIR = Path(__file__).resolve().parent.parent / "src"
 sys.path.insert(0, str(SRC_DIR))
 
-# Must be set before importing anything from src/
-os.environ.setdefault("DATABASE_URL", "sqlite:///./agora_test.db")
+# Force SQLite so tests can never touch a developer's real PostgreSQL,
+# even if DATABASE_URL is exported in their shell or defined in .env.
+os.environ["DATABASE_URL"] = "sqlite:///./agora_test.db"
 os.environ.setdefault("META_VERIFY_TOKEN", "agora_verify_token")
 
 import pytest  # noqa: E402
@@ -26,6 +27,15 @@ from sqlalchemy.pool import StaticPool  # noqa: E402
 
 from database import Base  # noqa: E402
 import models  # noqa: E402,F401  (registers models on Base.metadata)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _cleanup_sqlite_file():
+    """Remove the on-disk test SQLite file before and after the run."""
+    db_file = Path.cwd() / "agora_test.db"
+    db_file.unlink(missing_ok=True)
+    yield
+    db_file.unlink(missing_ok=True)
 
 
 @pytest.fixture()
