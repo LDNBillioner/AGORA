@@ -62,6 +62,9 @@ def send_whatsapp_message(to_number: str, message: str):
             response = client.post(url, headers=headers, json=payload)
             response.raise_for_status()
         print(f"[WA] Message sent to {to_number}: {message[:60]}...")
+    except httpx.HTTPStatusError as e:
+        error_body = e.response.text
+        print(f"[WA] Failed to send message to {to_number}: {e} | Meta API Response: {error_body}")
     except Exception as e:
         print(f"[WA] Failed to send message to {to_number}: {e}")
 
