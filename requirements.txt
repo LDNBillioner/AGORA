@@ -10,19 +10,16 @@ alembic==1.13.1
 pgvector==0.2.5
 
 # LangChain / LangGraph (AI Orchestration)
-langchain==0.2.5
-langchain-core==0.2.9
-langchain-community==0.2.5
-langchain-google-genai==1.0.6
-langgraph==0.1.5
+langchain==1.3.14
+langchain-core==1.5.2
+langchain-community==0.4.2
+langchain-google-genai==4.3.2
+langgraph==1.2.10
 
 # AI Models (New SDK)
-google-genai>=1.0.0
+google-genai==2.14.0
 
 # Utils
 python-dotenv==1.0.1
 httpx==0.27.0
-pydantic==2.7.4
-
-# Testing / Dev
-pytest==8.2.2
+pydantic==2.13.4
