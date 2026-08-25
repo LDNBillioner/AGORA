@@ -23,7 +23,8 @@ from agent import process_message
 META_ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN", "")
 META_PHONE_NUMBER_ID = os.getenv("META_PHONE_NUMBER_ID", "")
 META_API_VERSION = "v20.0"
-AGORA_ENGINE_URL = os.getenv("AGORA_ENGINE_URL", "http://localhost:8000")
+_port = os.getenv("PORT", "8000")
+AGORA_ENGINE_URL = os.getenv("AGORA_ENGINE_URL", f"http://localhost:{_port}")
 
 ONBOARDING_MESSAGE = (
     "👋 Halo! Selamat datang di *AGORA AI Accountant*!\n\n"
