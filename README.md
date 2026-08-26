@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="AGORA_logo.png" alt="AGORA Logo" width="200" />
+  <img src="AGORA_logo.png?v=20260826" alt="AGORA Logo" width="200" />
   <h1>AGORA (Automated Goods & Operations Recording Agent)</h1>
   <p><strong>AI-Powered WhatsApp Accountant for Indonesian MSMEs (UMKM)</strong></p>
   
